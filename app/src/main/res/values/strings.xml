@@ -1,5 +1,7 @@
 <resources>
-    <string name="app_name">ADS Event Dashcam</string>
+    <string name="app_name">ADS Event Dashcam Prototype</string>
     <string name="app_id">com.orfeaspanagou.adseventdashcam</string>
     <string name="register_button_text">Register Device</string>
+    <string name="register_button_icon_description">Register Device Icon</string>
+    <string name="stream_button_text">Stream Event (Debug)</string>
 </resources>
