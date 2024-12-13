@@ -52,7 +52,8 @@ class DeviceRepositoryImpl @Inject constructor(
         observeLocation()
             .collect { location ->
                 try {
-                    updateLocation()
+                    if(isRegistered)
+                        updateLocation()
                 } catch (e: Exception) {
                     // Log error but continue collecting
                     println("Failed to update location: ${e.message}")
@@ -61,10 +62,11 @@ class DeviceRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getDeviceId(): String {
-        return Settings.Secure.getString(
-            context.contentResolver,
-            Settings.Secure.ANDROID_ID
-        )
+        return "test-emulator"
+//        return Settings.Secure.getString(
+//            context.contentResolver,
+//            Settings.Secure.ANDROID_ID
+//        )
     }
 
     override suspend fun registerDevice(): Result<Unit> {
@@ -170,6 +172,22 @@ class DeviceRepositoryImpl @Inject constructor(
                 }
         }
     }
+
+    override suspend fun checkRegistrationStatus(): Boolean {
+            return try {
+                val response = api.checkRegistrationStatus(getDeviceId())
+                val isRegistered = response.isSuccessful && response.body()?.isRegistered == true
+
+                // Update the local registration status
+                _isRegistered = isRegistered
+
+                isRegistered
+            } catch (e: Exception) {
+                // Keep current registration status on failure
+                false
+            }
+    }
+
 
     companion object {
         private const val LOCATION_UPDATE_INTERVAL = 5 * 60 * 1000L // 5 minutes

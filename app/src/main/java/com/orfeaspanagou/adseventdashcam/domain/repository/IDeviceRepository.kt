@@ -9,5 +9,6 @@ interface IDeviceRepository {
     fun observeLocation(): Flow<Location>
     suspend fun getDeviceId(): String
     suspend fun getCurrentLocation(): Location? // Make sure it's public in interface
+    suspend fun checkRegistrationStatus(): Boolean
     val isRegistered: Boolean
 }

@@ -22,22 +22,32 @@ class MainViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
     val uiState = _uiState.asStateFlow()
 
-    // Optional: Only if you need to show location in UI
     private val _location = MutableStateFlow<Location?>(null)
     val location = _location.asStateFlow()
 
     val streamState = streamRepository.streamState
 
     init {
-        // Only start location observation if you need to show it in UI
-        // Otherwise, remove this
+        viewModelScope.launch {
+            try {
+                // Call an API method to check registration status
+                val registrationResponse = deviceRepository.checkRegistrationStatus()
+                _uiState.value = if (registrationResponse) UiState.Success else UiState.Initial
+            } catch (e: Exception) {
+                // If API call fails, default to Initial state
+                _uiState.value = UiState.Initial
+                println("Registration status check failed: ${e.message}")
+            }
+        }
+
+
+        // Your existing location observation
         viewModelScope.launch {
             try {
                 deviceRepository.observeLocation().collect { newLocation ->
                     _location.value = newLocation
                 }
             } catch (e: Exception) {
-                // Handle location errors gracefully
                 println("Failed to observe location: ${e.message}")
             }
         }
