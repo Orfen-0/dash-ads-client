@@ -88,7 +88,7 @@ fun MainComposable(
         StreamCamera(
             streamState = streamState,
             onStreamClick = {
-                if (streamState == StreamState.STREAMING) {
+                if (streamState == StreamState.Streaming) {
                     viewModel.stopStream()
                 } else {
                     viewModel.startStream()
@@ -164,7 +164,7 @@ fun StreamCamera(
         onClick = onStreamClick,
         modifier = modifier.padding(16.dp),
         shape = RoundedCornerShape(4.dp),
-        enabled = enabled && (streamState == StreamState.IDLE || streamState == StreamState.STREAMING)
+        enabled = enabled && (streamState == StreamState.Idle || streamState == StreamState.Streaming)
     ) {
         Icon(
             painter = painterResource(id = R.drawable.videocam),
@@ -173,11 +173,12 @@ fun StreamCamera(
         )
         Text(
             text = when (streamState) {
-                StreamState.IDLE -> stringResource(R.string.stream_button_text)
-                StreamState.STARTING -> "Starting Stream..."
-                StreamState.STREAMING -> "Stop Streaming"
-                StreamState.STOPPING -> "Stopping Stream..."
-                StreamState.ERROR -> "Error"
+                StreamState.Idle -> stringResource(R.string.stream_button_text)
+                StreamState.Starting -> "Starting Stream..."
+                StreamState.Streaming -> "Stop Streaming"
+                StreamState.Stopping -> "Stopping Stream..."
+                StreamState.Error(message = "") -> "Error"
+                is StreamState.Error -> TODO()
             },
             modifier = Modifier.padding(start = 8.dp)
         )

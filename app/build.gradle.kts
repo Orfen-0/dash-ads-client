@@ -5,6 +5,9 @@ plugins {
     kotlin("kapt")
 }
 
+kapt {
+    correctErrorTypes = true
+}
 android {
     namespace = "com.orfeaspanagou.adseventdashcam"
     compileSdk = 34
@@ -52,6 +55,21 @@ android {
 }
 
 dependencies {
+    // streaming
+    implementation("androidx.media3:media3-exoplayer:1.2.1")
+    implementation("androidx.media3:media3-transformer:1.2.1")
+
+// StreamPack
+    implementation("io.github.thibaultbee:streampack:2.6.1")
+    // For RTMP
+    implementation("io.github.thibaultbee:streampack-extension-rtmp:2.6.1")
+// CameraX
+    implementation("androidx.camera:camera-core:1.3.1")
+    implementation("androidx.camera:camera-camera2:1.3.1")
+    implementation("androidx.camera:camera-lifecycle:1.3.1")
+    implementation("androidx.camera:camera-video:1.3.1")
+    implementation("androidx.camera:camera-view:1.3.1")
+    implementation("androidx.camera:camera-extensions:1.3.1")
     // Material 3
     implementation("androidx.compose.material3:material3:1.2.0")  // Updated to latest
 
