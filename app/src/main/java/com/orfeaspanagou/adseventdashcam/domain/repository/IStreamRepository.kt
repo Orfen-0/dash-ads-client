@@ -1,5 +1,7 @@
 package com.orfeaspanagou.adseventdashcam.domain.repository
 
+import io.github.thibaultbee.streampack.listeners.OnConnectionListener
+import io.github.thibaultbee.streampack.listeners.OnErrorListener
 import kotlinx.coroutines.flow.StateFlow
 
 sealed class StreamState {
@@ -14,4 +16,5 @@ interface IStreamRepository {
     val streamState: StateFlow<StreamState>
     suspend fun startStream(): Result<Unit>
     suspend fun stopStream(): Result<Unit>
+    suspend fun initializeStreamer(onErrorListener: OnErrorListener, onConnectionListener: OnConnectionListener):Result<Unit>
 }

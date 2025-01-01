@@ -1,15 +1,24 @@
 package com.orfeaspanagou.adseventdashcam.data.manager.stream
 
 
+import android.Manifest
 import android.content.Context
+import android.os.Build
+import androidx.annotation.RequiresPermission
 import com.orfeaspanagou.adseventdashcam.data.repository.stream.StreamConfiguration
+import com.orfeaspanagou.adseventdashcam.data.repository.stream.StreamerFactory
 import com.orfeaspanagou.adseventdashcam.data.repository.stream.createVideoMediaOutputStream
 import com.orfeaspanagou.adseventdashcam.domain.model.Location
 import com.orfeaspanagou.adseventdashcam.domain.repository.StreamState
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.thibaultbee.streampack.listeners.OnConnectionListener
+import io.github.thibaultbee.streampack.listeners.OnErrorListener
+import io.github.thibaultbee.streampack.streamers.StreamerLifeCycleObserver
 import io.github.thibaultbee.streampack.streamers.interfaces.IStreamer
+import io.github.thibaultbee.streampack.utils.getCameraStreamer
 import io.github.thibaultbee.streampack.utils.getFileStreamer
 import io.github.thibaultbee.streampack.utils.getLiveStreamer
+import io.github.thibaultbee.streampack.views.PreviewView
 import isConnected
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,6 +40,49 @@ class StreamManager @Inject constructor(
     private val _streamState = MutableStateFlow<StreamState>(StreamState.Idle)
     val streamState = _streamState.asStateFlow()
 
+
+    var onErrorListener: OnErrorListener?
+        get() = streamer?.onErrorListener
+        set(value) {
+            streamer?.onErrorListener = value
+        }
+
+    var onConnectionListener: OnConnectionListener?
+        get() = streamer?.getLiveStreamer()?.onConnectionListener
+        set(value) {
+            streamer?.getLiveStreamer()?.onConnectionListener = value
+        }
+
+    val cameraId: String?
+        get() = streamer?.getCameraStreamer()?.camera
+
+    val streamerLifeCycleObserver: StreamerLifeCycleObserver by lazy {
+        StreamerLifeCycleObserver(streamer!!)
+    }
+
+
+    val requiredPermissions: List<String>
+        get() {
+            val permissions = mutableListOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO
+            )
+            streamer?.getFileStreamer()?.let {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+                    permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }
+            return permissions
+        }
+
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
+    fun rebuildStreamer() {
+        streamer = StreamerFactory(context, configuration).build()
+    }
+
+    fun inflateStreamerView(view: PreviewView) {
+        view.streamer = streamer?.getCameraStreamer()
+    }
 
 
     suspend fun startStream(deviceId: String, currentLocation: Location) {

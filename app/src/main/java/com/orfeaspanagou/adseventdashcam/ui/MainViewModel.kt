@@ -1,5 +1,11 @@
 package com.orfeaspanagou.adseventdashcam.ui
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.ContentValues.TAG
+import android.util.Log
+import androidx.annotation.RequiresPermission
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.orfeaspanagou.adseventdashcam.domain.model.Location
@@ -7,6 +13,9 @@ import com.orfeaspanagou.adseventdashcam.domain.repository.IDeviceRepository
 import com.orfeaspanagou.adseventdashcam.domain.repository.IStreamRepository
 import com.orfeaspanagou.adseventdashcam.domain.repository.StreamState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.thibaultbee.streampack.error.StreamPackError
+import io.github.thibaultbee.streampack.listeners.OnConnectionListener
+import io.github.thibaultbee.streampack.listeners.OnErrorListener
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,6 +27,9 @@ class MainViewModel @Inject constructor(
     private val deviceRepository: IDeviceRepository,
     private val streamRepository: IStreamRepository
 ) : ViewModel() {
+
+    val streamerError = MutableLiveData<String>()
+
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Initial)
     val uiState = _uiState.asStateFlow()
@@ -53,6 +65,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    @SuppressLint("MissingPermission")
     fun registerDevice() {
         viewModelScope.launch {
             _uiState.value = UiState.Loading
@@ -67,8 +80,44 @@ class MainViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = UiState.Error("Could not connect to server")
             }
+            createStreamer();
         }
     }
+
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
+    fun createStreamer() {
+        viewModelScope.launch {
+            try {
+                streamRepository.initializeStreamer(onErrorListener,onConnectionListener);
+                Log.d(TAG, "Streamer is created")
+            } catch (e: Throwable) {
+                Log.e(TAG, "createStreamer failed", e)
+                streamerError.postValue("createStreamer: ${e.message ?: "Unknown error"}")
+            }
+        }
+    }
+
+    private val onErrorListener = object : OnErrorListener {
+        override fun onError(error: StreamPackError) {
+            Log.e(TAG, "onError", error)
+            streamerError.postValue("${error.javaClass.simpleName}: ${error.message}")
+        }
+    }
+
+    private val onConnectionListener = object : OnConnectionListener {
+        override fun onLost(message: String) {
+            streamerError.postValue("Connection lost: $message")
+        }
+
+        override fun onFailed(message: String) {
+            // Not needed as we catch startStream
+        }
+
+        override fun onSuccess() {
+            Log.i(TAG, "Connection succeeded")
+        }
+    }
+
 
     fun startStream() {
         viewModelScope.launch {

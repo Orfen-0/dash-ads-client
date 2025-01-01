@@ -1,10 +1,14 @@
 package com.orfeaspanagou.adseventdashcam.data.repository
 
 
+import android.Manifest
 import android.util.Log
+import androidx.annotation.RequiresPermission
 import com.orfeaspanagou.adseventdashcam.data.manager.stream.StreamManager
 import com.orfeaspanagou.adseventdashcam.domain.repository.IDeviceRepository
 import com.orfeaspanagou.adseventdashcam.domain.repository.IStreamRepository
+import io.github.thibaultbee.streampack.listeners.OnConnectionListener
+import io.github.thibaultbee.streampack.listeners.OnErrorListener
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,6 +45,22 @@ class StreamRepositoryImpl @Inject constructor(
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "stopStream failed", e)
+            Result.failure(e)
+        }
+    }
+
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
+    override suspend fun initializeStreamer(
+        onErrorListener: OnErrorListener,
+        onConnectionListener: OnConnectionListener
+    ): Result<Unit> {
+        return try {
+        streamManager.rebuildStreamer()
+        streamManager.onErrorListener = onErrorListener
+        streamManager.onConnectionListener = onConnectionListener
+        Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "stream initialization failed", e)
             Result.failure(e)
         }
     }
