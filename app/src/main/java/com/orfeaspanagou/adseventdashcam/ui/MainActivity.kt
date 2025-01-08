@@ -1,7 +1,10 @@
 package com.orfeaspanagou.adseventdashcam.ui
 
 import PermissionUtils
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -31,14 +35,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.core.app.ActivityCompat
 import com.orfeaspanagou.adseventdashcam.R
 import com.orfeaspanagou.adseventdashcam.domain.repository.StreamState
 import com.orfeaspanagou.adseventdashcam.ui.theme.ADSEventDashcamTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(),PermissionUtils.PermissionListener {
     private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,6 +59,38 @@ class MainActivity : ComponentActivity() {
             }
         }
         PermissionUtils.checkAndRequestPermissions(this)
+    }
+
+    override fun onPermissionsGranted() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return
+        }
+        viewModel.createStreamer();
+        viewModel.registerDevice()
+    }
+
+    override fun onPermissionsDenied() {
+        Toast.makeText(this, "Permissions are required to continue", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        PermissionUtils.handlePermissionResult(requestCode, permissions, grantResults, this)
     }
 }
 
@@ -94,7 +130,17 @@ fun MainComposable(
                     viewModel.startStream()
                 }
             },
-            enabled = uiState is UiState.Success // Only enable if device is registered
+            enabled = (uiState is UiState.Success) && (
+                    streamState == StreamState.Ready ||
+                            streamState == StreamState.Streaming)
+        )
+        CameraPreview(
+            onPreviewCreated = { previewView ->
+                viewModel.attachPreview(previewView)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)  // partial bottom preview, for example
         )
 
         // Show error if any
@@ -164,7 +210,7 @@ fun StreamCamera(
         onClick = onStreamClick,
         modifier = modifier.padding(16.dp),
         shape = RoundedCornerShape(4.dp),
-        enabled = enabled && (streamState == StreamState.Idle || streamState == StreamState.Streaming)
+        enabled = enabled
     ) {
         Icon(
             painter = painterResource(id = R.drawable.videocam),
@@ -174,11 +220,13 @@ fun StreamCamera(
         Text(
             text = when (streamState) {
                 StreamState.Idle -> stringResource(R.string.stream_button_text)
+                StreamState.Ready -> "Click to start Stream"
+                StreamState.Offline -> "Click to start recording (offline)"
                 StreamState.Starting -> "Starting Stream..."
                 StreamState.Streaming -> "Stop Streaming"
                 StreamState.Stopping -> "Stopping Stream..."
-                StreamState.Error(message = "") -> "Error"
-                is StreamState.Error -> TODO()
+                is StreamState.Error -> "Error: ${streamState.message}"
+                else -> "Unknown state"
             },
             modifier = Modifier.padding(start = 8.dp)
         )

@@ -3,8 +3,11 @@ package com.orfeaspanagou.adseventdashcam.ui
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ContentValues.TAG
+import android.content.Context
+import android.content.pm.PackageManager
 import android.util.Log
 import androidx.annotation.RequiresPermission
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,9 +16,11 @@ import com.orfeaspanagou.adseventdashcam.domain.repository.IDeviceRepository
 import com.orfeaspanagou.adseventdashcam.domain.repository.IStreamRepository
 import com.orfeaspanagou.adseventdashcam.domain.repository.StreamState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.thibaultbee.streampack.error.StreamPackError
 import io.github.thibaultbee.streampack.listeners.OnConnectionListener
 import io.github.thibaultbee.streampack.listeners.OnErrorListener
+import io.github.thibaultbee.streampack.views.PreviewView
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,7 +30,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val deviceRepository: IDeviceRepository,
-    private val streamRepository: IStreamRepository
+    private val streamRepository: IStreamRepository,
 ) : ViewModel() {
 
     val streamerError = MutableLiveData<String>()
@@ -38,6 +43,9 @@ class MainViewModel @Inject constructor(
     val location = _location.asStateFlow()
 
     val streamState = streamRepository.streamState
+
+    private val REQUEST_RECORD_AUDIO_PERMISSION = 200
+    private val permissions = arrayOf(android.Manifest.permission.RECORD_AUDIO)
 
     init {
         viewModelScope.launch {
@@ -65,7 +73,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    @SuppressLint("MissingPermission")
     fun registerDevice() {
         viewModelScope.launch {
             _uiState.value = UiState.Loading
@@ -80,18 +87,18 @@ class MainViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = UiState.Error("Could not connect to server")
             }
-            createStreamer();
         }
     }
+
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun createStreamer() {
         viewModelScope.launch {
             try {
                 streamRepository.initializeStreamer(onErrorListener,onConnectionListener);
-                Log.d(TAG, "Streamer is created")
+                Log.d("STREAMER", "Streamer is created")
             } catch (e: Throwable) {
-                Log.e(TAG, "createStreamer failed", e)
+                Log.d("STREAMER", "createStreamer failed", e)
                 streamerError.postValue("createStreamer: ${e.message ?: "Unknown error"}")
             }
         }
@@ -99,22 +106,29 @@ class MainViewModel @Inject constructor(
 
     private val onErrorListener = object : OnErrorListener {
         override fun onError(error: StreamPackError) {
-            Log.e(TAG, "onError", error)
+            Log.d("STREAMING", "onError", error)
             streamerError.postValue("${error.javaClass.simpleName}: ${error.message}")
         }
     }
 
     private val onConnectionListener = object : OnConnectionListener {
         override fun onLost(message: String) {
+            Log.d("STREAMING", "Connection lost: $message")
             streamerError.postValue("Connection lost: $message")
         }
 
         override fun onFailed(message: String) {
-            // Not needed as we catch startStream
+            Log.d("STREAMING", message)
         }
 
         override fun onSuccess() {
-            Log.i(TAG, "Connection succeeded")
+            Log.d("STREAMING", "Connection succeeded")
+        }
+    }
+
+    fun attachPreview(previewView: PreviewView) {
+        viewModelScope.launch {
+            streamRepository.attachPreview(previewView)
         }
     }
 
@@ -130,9 +144,11 @@ class MainViewModel @Inject constructor(
                 streamRepository.startStream()
                     .onFailure { error ->
                         _uiState.value = UiState.Error(error.message ?: "Failed to start streaming")
+                        Log.d("STREAMING", "Failed to start stream",error)
                     }
             } catch (e: Exception) {
                 _uiState.value = UiState.Error("Could not connect to streaming service")
+                Log.d("STREAMING", "Failed to start stream",e)
             }
         }
     }

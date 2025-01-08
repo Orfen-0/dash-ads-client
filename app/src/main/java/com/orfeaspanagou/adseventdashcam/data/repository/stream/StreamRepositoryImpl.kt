@@ -7,8 +7,10 @@ import androidx.annotation.RequiresPermission
 import com.orfeaspanagou.adseventdashcam.data.manager.stream.StreamManager
 import com.orfeaspanagou.adseventdashcam.domain.repository.IDeviceRepository
 import com.orfeaspanagou.adseventdashcam.domain.repository.IStreamRepository
+import com.orfeaspanagou.adseventdashcam.domain.repository.StreamState
 import io.github.thibaultbee.streampack.listeners.OnConnectionListener
 import io.github.thibaultbee.streampack.listeners.OnErrorListener
+import io.github.thibaultbee.streampack.views.PreviewView
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -55,15 +57,20 @@ class StreamRepositoryImpl @Inject constructor(
         onConnectionListener: OnConnectionListener
     ): Result<Unit> {
         return try {
-        streamManager.rebuildStreamer()
-        streamManager.onErrorListener = onErrorListener
-        streamManager.onConnectionListener = onConnectionListener
-        Result.success(Unit)
+            streamManager.rebuildStreamer()
+            streamManager.onErrorListener = onErrorListener
+            streamManager.onConnectionListener = onConnectionListener
+            Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "stream initialization failed", e)
             Result.failure(e)
         }
     }
+
+    override suspend fun attachPreview(previewView: PreviewView) {
+        streamManager.inflateStreamerView(previewView);
+    }
+
 
     companion object {
         private const val TAG = "StreamRepositoryImpl"

@@ -82,10 +82,15 @@ class StreamManager @Inject constructor(
 
     fun inflateStreamerView(view: PreviewView) {
         view.streamer = streamer?.getCameraStreamer()
+        _streamState.value = StreamState.Idle
     }
 
 
     suspend fun startStream(deviceId: String, currentLocation: Location) {
+        if (_streamState.value != StreamState.Idle) {
+            _streamState.value = StreamState.Error("Must open preview before starting stream")
+            return
+        }
         _streamState.value = StreamState.Starting
         val isConnected = isConnected(context)
         try {
