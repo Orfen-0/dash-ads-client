@@ -2,6 +2,7 @@
 package com.orfeaspanagou.adseventdashcam.di
 
 import com.orfeaspanagou.adseventdashcam.data.api.DeviceApi
+import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -16,9 +17,10 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(): Retrofit {
+    fun provideRetrofit(configuration: StreamConfiguration
+    ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://192.168.1.77:8080/") // Change this to your server URL
+            .baseUrl(configuration.httpEndpoint) // Change this to your server URL
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }

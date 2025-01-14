@@ -1,4 +1,4 @@
-package com.orfeaspanagou.adseventdashcam.data.repository.stream
+package com.orfeaspanagou.adseventdashcam.data.factory
 
 
 import android.Manifest
@@ -7,6 +7,8 @@ import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.util.Size
 import androidx.annotation.RequiresPermission
+import com.orfeaspanagou.adseventdashcam.data.config.EndpointType
+import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.thibaultbee.streampack.data.AudioConfig
 import io.github.thibaultbee.streampack.data.VideoConfig
@@ -23,19 +25,22 @@ class  StreamerFactory @Inject constructor(
     private val enableAudio: Boolean
         get() = configuration.audio
 
-    private val videoConfig = VideoConfig(
-        mimeType = MediaFormat.MIMETYPE_VIDEO_AVC,
-        startBitrate = 2 * 1000, // to b/s
-        resolution = Size(1280, 720),
-        fps = 30,
-        profile = MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline,
-        level = MediaCodecInfo.CodecProfileLevel.AVCLevel1
-    )
+    private val videoConfig
+        get() = VideoConfig(
+            mimeType = MediaFormat.MIMETYPE_VIDEO_AVC,
+            // Convert from Kbps to bps if needed:
+            startBitrate = configuration.bitrate,
+            resolution = Size(configuration.resolutionWidth, configuration.resolutionHeight),
+            fps = configuration.fps,
+            profile = MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline,
+            level = MediaCodecInfo.CodecProfileLevel.AVCLevel1
+        )
 
-    private val audioConfig = AudioConfig(
-        mimeType = MediaFormat.MIMETYPE_AUDIO_AAC,
-        startBitrate = 128000,
-        sampleRate = 48000,
+    private val audioConfig
+        get() = AudioConfig(
+            mimeType = MediaFormat.MIMETYPE_AUDIO_AAC,
+            startBitrate = 128000,
+        sampleRate = 44100,
         channelConfig = AudioConfig.getChannelConfig(2),
         profile = MediaCodecInfo.CodecProfileLevel.AACObjectLC,
         byteFormat = 2,
@@ -62,10 +67,10 @@ class  StreamerFactory @Inject constructor(
     fun build(): IStreamer {
         val streamer = createStreamer(context)
 
-        val videoConfig = videoConfig
-
-        val audioConfig = audioConfig
-
+        streamer.configure(videoConfig)
+        if (enableAudio) {
+            streamer.configure(audioConfig)
+        }
        streamer.configure(videoConfig)
 
 

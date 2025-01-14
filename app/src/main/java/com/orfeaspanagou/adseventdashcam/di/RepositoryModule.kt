@@ -2,7 +2,7 @@ package com.orfeaspanagou.adseventdashcam.di
 
 import android.content.Context
 import com.orfeaspanagou.adseventdashcam.data.api.DeviceApi
-import com.orfeaspanagou.adseventdashcam.data.manager.stream.StreamManager
+import com.orfeaspanagou.adseventdashcam.data.managers.stream.StreamManager
 import com.orfeaspanagou.adseventdashcam.data.repository.DeviceRepositoryImpl
 import com.orfeaspanagou.adseventdashcam.data.repository.StreamRepositoryImpl
 import com.orfeaspanagou.adseventdashcam.domain.repository.IDeviceRepository

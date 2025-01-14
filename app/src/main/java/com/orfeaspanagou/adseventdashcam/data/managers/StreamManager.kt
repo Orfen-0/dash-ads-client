@@ -1,12 +1,12 @@
-package com.orfeaspanagou.adseventdashcam.data.manager.stream
+package com.orfeaspanagou.adseventdashcam.data.managers.stream
 
 
 import android.Manifest
 import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresPermission
-import com.orfeaspanagou.adseventdashcam.data.repository.stream.StreamConfiguration
-import com.orfeaspanagou.adseventdashcam.data.repository.stream.StreamerFactory
+import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
+import com.orfeaspanagou.adseventdashcam.data.factory.StreamerFactory
 import com.orfeaspanagou.adseventdashcam.data.repository.stream.createVideoMediaOutputStream
 import com.orfeaspanagou.adseventdashcam.domain.model.Location
 import com.orfeaspanagou.adseventdashcam.domain.repository.StreamState
@@ -23,7 +23,6 @@ import isConnected
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,6 +34,7 @@ class StreamManager @Inject constructor(
 
 ) {
     private var streamer: IStreamer? = null
+    private var currentRtmpUrl: String = configuration.rtmpEndpoint
 
 
     private val _streamState = MutableStateFlow<StreamState>(StreamState.Idle)
@@ -53,41 +53,22 @@ class StreamManager @Inject constructor(
             streamer?.getLiveStreamer()?.onConnectionListener = value
         }
 
-    val cameraId: String?
-        get() = streamer?.getCameraStreamer()?.camera
-
-    val streamerLifeCycleObserver: StreamerLifeCycleObserver by lazy {
-        StreamerLifeCycleObserver(streamer!!)
-    }
-
-
-    val requiredPermissions: List<String>
-        get() {
-            val permissions = mutableListOf(
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO
-            )
-            streamer?.getFileStreamer()?.let {
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-                    permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                }
-            }
-            return permissions
-        }
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
-    fun rebuildStreamer() {
+    fun rebuildStreamer(configuration: StreamConfiguration) {
         streamer = StreamerFactory(context, configuration).build()
+        currentRtmpUrl = configuration.rtmpEndpoint
+
     }
 
     fun inflateStreamerView(view: PreviewView) {
         view.streamer = streamer?.getCameraStreamer()
-        _streamState.value = StreamState.Idle
+        _streamState.value = StreamState.Ready
     }
 
 
     suspend fun startStream(deviceId: String, currentLocation: Location) {
-        if (_streamState.value != StreamState.Idle) {
+        if (_streamState.value != StreamState.Ready) {
             _streamState.value = StreamState.Error("Must open preview before starting stream")
             return
         }
@@ -97,7 +78,7 @@ class StreamManager @Inject constructor(
             // Decide whether to stream or record based on connectivity
             if (isConnected) {
                 val rtmpUrlWithParams = buildString {
-                    append(configuration.rtmpEndpoint)
+                    append(currentRtmpUrl)
                     append("?deviceId="); append(deviceId)
                     append("&lat=");      append(currentLocation.latitude)
                     append("&lng=");      append(currentLocation.longitude)
@@ -125,7 +106,7 @@ class StreamManager @Inject constructor(
             streamer?.stopStream()
         }
         streamer?.getLiveStreamer()?.disconnect()
-        _streamState.value = StreamState.Idle
+        _streamState.value = StreamState.Ready
     }
 
 }

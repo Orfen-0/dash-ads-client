@@ -1,4 +1,4 @@
-package com.orfeaspanagou.adseventdashcam.ui
+package com.orfeaspanagou.adseventdashcam.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height

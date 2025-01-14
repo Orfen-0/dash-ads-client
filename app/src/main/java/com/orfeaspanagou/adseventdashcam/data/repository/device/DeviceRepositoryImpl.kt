@@ -62,11 +62,11 @@ class DeviceRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getDeviceId(): String {
-        return "test-emulator"
-//        return Settings.Secure.getString(
-//            context.contentResolver,
-//            Settings.Secure.ANDROID_ID
-//        )
+       // return "test-emulator"
+       return Settings.Secure.getString(
+           context.contentResolver,
+         Settings.Secure.ANDROID_ID
+        )
     }
 
     override suspend fun registerDevice(): Result<Unit> {

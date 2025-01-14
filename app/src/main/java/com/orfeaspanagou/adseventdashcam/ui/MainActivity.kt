@@ -11,7 +11,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,13 +20,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -37,7 +41,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import com.orfeaspanagou.adseventdashcam.R
+import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
 import com.orfeaspanagou.adseventdashcam.domain.repository.StreamState
+import com.orfeaspanagou.adseventdashcam.ui.components.CameraPreview
+import com.orfeaspanagou.adseventdashcam.ui.components.SettingsScreen
 import com.orfeaspanagou.adseventdashcam.ui.theme.ADSEventDashcamTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -50,34 +57,14 @@ class MainActivity : ComponentActivity(),PermissionUtils.PermissionListener {
         enableEdgeToEdge()
         setContent {
             ADSEventDashcamTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    MainComposable(
-                        modifier = Modifier.padding(innerPadding),
-                        viewModel = viewModel
-                    )
-                }
+                AppRootContent(viewModel)
             }
         }
         PermissionUtils.checkAndRequestPermissions(this)
     }
 
     override fun onPermissionsGranted() {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return
-        }
-        viewModel.createStreamer();
-        viewModel.registerDevice()
+        viewModel.initApp();
     }
 
     override fun onPermissionsDenied() {
@@ -94,10 +81,56 @@ class MainActivity : ComponentActivity(),PermissionUtils.PermissionListener {
     }
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppRootContent(viewModel: MainViewModel) {
+    val screenState by viewModel.currentScreen.collectAsState()
+    val configState by viewModel.configFlow.collectAsState()
+    LaunchedEffect(configState) {
+        // Rebuild streamer whenever config changes
+        viewModel.reinitStreamer(configState)
+    }
+    when (screenState) {
+        AppScreen.MAIN -> {
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("ADS Client App") },
+                        actions = {
+                            // The gear icon in the top-right
+                            IconButton(onClick = { viewModel.goToSettings() }) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Settings"
+                                )
+                            }
+                        }
+                    )
+                }
+            ) { innerPadding ->
+                MainComposable(
+                    modifier = Modifier.padding(innerPadding),
+                    viewModel = viewModel,
+                )
+            }
+        }
+
+        AppScreen.SETTINGS -> {
+            SettingsRoute(
+                streamConfiguration = configState,
+                onSave = { newConfig ->
+                    viewModel.saveConfig(newConfig)
+                }
+            )
+        }
+    }
+}
+
 @Composable
 fun MainComposable(
     modifier: Modifier = Modifier,
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val streamState by viewModel.streamState.collectAsState()
@@ -109,18 +142,10 @@ fun MainComposable(
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            modifier = Modifier.padding(16.dp),
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(16.dp))
         RegisterDevice(
             uiState = uiState,
             onRegisterClick = { viewModel.registerDevice() }
         )
-        Spacer(modifier = Modifier.height(16.dp))
         StreamCamera(
             streamState = streamState,
             onStreamClick = {
@@ -142,6 +167,7 @@ fun MainComposable(
                 .fillMaxWidth()
                 .height(200.dp)  // partial bottom preview, for example
         )
+
 
         // Show error if any
         if (uiState is UiState.Error) {
@@ -231,4 +257,18 @@ fun StreamCamera(
             modifier = Modifier.padding(start = 8.dp)
         )
     }
+}
+
+@Composable
+fun SettingsRoute(
+    streamConfiguration: StreamConfiguration,
+    onSave: (StreamConfiguration) -> Unit
+) {
+    SettingsScreen(
+        currentConfig = streamConfiguration,
+        onConfigChange = { newConfig ->
+            // The user tapped Save. We pass back the updated config.
+            onSave(newConfig)
+        }
+    )
 }

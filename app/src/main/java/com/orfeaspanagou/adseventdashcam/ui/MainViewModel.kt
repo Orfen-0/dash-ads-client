@@ -2,19 +2,20 @@ package com.orfeaspanagou.adseventdashcam.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.annotation.RequiresPermission
-import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
 import com.orfeaspanagou.adseventdashcam.domain.model.Location
 import com.orfeaspanagou.adseventdashcam.domain.repository.IDeviceRepository
 import com.orfeaspanagou.adseventdashcam.domain.repository.IStreamRepository
-import com.orfeaspanagou.adseventdashcam.domain.repository.StreamState
+import com.orfeaspanagou.adseventdashcam.data.datastore.SettingsRepository
+import com.orfeaspanagou.adseventdashcam.network.NetworkManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.thibaultbee.streampack.error.StreamPackError
@@ -22,17 +23,49 @@ import io.github.thibaultbee.streampack.listeners.OnConnectionListener
 import io.github.thibaultbee.streampack.listeners.OnErrorListener
 import io.github.thibaultbee.streampack.views.PreviewView
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+
+enum class AppScreen { MAIN, SETTINGS }
+
 @HiltViewModel
 class MainViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context, // Injected application context
     private val deviceRepository: IDeviceRepository,
     private val streamRepository: IStreamRepository,
+    private val settingsRepository: SettingsRepository,
+    private val networkManager: NetworkManager
 ) : ViewModel() {
 
+
+    val configFlow = settingsRepository.configFlow.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        StreamConfiguration()
+    )
+
+    private val _currentScreen = MutableStateFlow(AppScreen.MAIN)
+    val currentScreen = _currentScreen.asStateFlow()
+
+    fun goToSettings() {
+        _currentScreen.value = AppScreen.SETTINGS
+    }
+
+    fun goToMain() {
+        _currentScreen.value = AppScreen.MAIN
+    }
+
+    fun saveConfig(newConfig: StreamConfiguration) {
+        viewModelScope.launch {
+            settingsRepository.saveConfig(newConfig)
+            goToMain()
+        }
+    }
     val streamerError = MutableLiveData<String>()
 
 
@@ -40,19 +73,15 @@ class MainViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     private val _location = MutableStateFlow<Location?>(null)
-    val location = _location.asStateFlow()
 
     val streamState = streamRepository.streamState
 
-    private val REQUEST_RECORD_AUDIO_PERMISSION = 200
-    private val permissions = arrayOf(android.Manifest.permission.RECORD_AUDIO)
 
     init {
         viewModelScope.launch {
             try {
                 // Call an API method to check registration status
-                val registrationResponse = deviceRepository.checkRegistrationStatus()
-                _uiState.value = if (registrationResponse) UiState.Success else UiState.Initial
+                val initialConfig = configFlow.first()
             } catch (e: Exception) {
                 // If API call fails, default to Initial state
                 _uiState.value = UiState.Initial
@@ -69,6 +98,21 @@ class MainViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 println("Failed to observe location: ${e.message}")
+            }
+        }
+    }
+
+    fun initApp() {
+        viewModelScope.launch {
+            // 1) Wait for configFlow.first() or read the current configFlow.value
+            val config = settingsRepository.configFlow.first()
+            // 2) re-init or create your network manager, streamer, etc.
+            networkManager.initRetrofit(config)
+            if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                createStreamer(config)
+            } else {
+                Log.d("PERMISSION", "Audio permission not granted")
+                // Optionally, handle the lack of permission (for example, show a message)
             }
         }
     }
@@ -92,10 +136,10 @@ class MainViewModel @Inject constructor(
 
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
-    fun createStreamer() {
+    fun createStreamer(configuration: StreamConfiguration) {
         viewModelScope.launch {
             try {
-                streamRepository.initializeStreamer(onErrorListener,onConnectionListener);
+                streamRepository.initializeStreamer(configuration,onErrorListener,onConnectionListener);
                 Log.d("STREAMER", "Streamer is created")
             } catch (e: Throwable) {
                 Log.d("STREAMER", "createStreamer failed", e)
@@ -164,6 +208,12 @@ class MainViewModel @Inject constructor(
                 _uiState.value = UiState.Error("Could not connect to streaming service")
             }
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun reinitStreamer(newConfig: StreamConfiguration) {
+        networkManager.initRetrofit(newConfig)
+        createStreamer(newConfig)
     }
 }
 

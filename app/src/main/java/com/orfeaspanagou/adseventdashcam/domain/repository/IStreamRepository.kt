@@ -1,6 +1,6 @@
 package com.orfeaspanagou.adseventdashcam.domain.repository
 
-import com.orfeaspanagou.adseventdashcam.domain.model.Stream
+import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
 import io.github.thibaultbee.streampack.listeners.OnConnectionListener
 import io.github.thibaultbee.streampack.listeners.OnErrorListener
 import io.github.thibaultbee.streampack.views.PreviewView
@@ -21,5 +21,5 @@ interface IStreamRepository {
     suspend fun startStream(): Result<Unit>
     suspend fun attachPreview(previewView: PreviewView)
     suspend fun stopStream(): Result<Unit>
-    suspend fun initializeStreamer(onErrorListener: OnErrorListener, onConnectionListener: OnConnectionListener):Result<Unit>
+    suspend fun initializeStreamer(configuration: StreamConfiguration,onErrorListener: OnErrorListener, onConnectionListener: OnConnectionListener):Result<Unit>
 }
