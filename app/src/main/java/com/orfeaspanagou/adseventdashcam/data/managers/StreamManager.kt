@@ -16,6 +16,7 @@ import io.github.thibaultbee.streampack.streamers.interfaces.IStreamer
 import io.github.thibaultbee.streampack.utils.getCameraStreamer
 import io.github.thibaultbee.streampack.utils.getFileStreamer
 import io.github.thibaultbee.streampack.utils.getLiveStreamer
+import io.github.thibaultbee.streampack.utils.getStreamer
 import io.github.thibaultbee.streampack.views.PreviewView
 import isConnected
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,7 +61,7 @@ class StreamManager @Inject constructor(
     }
 
     fun inflateStreamerView(view: PreviewView) {
-        view.streamer = streamer?.getCameraStreamer()
+        view.streamer = streamer?.getStreamer()
         _streamState.value = StreamState.Ready
     }
 

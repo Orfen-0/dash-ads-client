@@ -43,6 +43,9 @@ class MainViewModel @Inject constructor(
 ) : ViewModel() {
 
 
+    private val _isStreamerReady = MutableStateFlow(false)
+    val isStreamerReady = _isStreamerReady.asStateFlow()
+
     val configFlow = settingsRepository.configFlow.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -74,6 +77,7 @@ class MainViewModel @Inject constructor(
                 currentConfig.resolutionHeight != newConfig.resolutionHeight ||
                 currentConfig.fps != newConfig.fps ||
                 currentConfig.audio != newConfig.audio) {
+                _isStreamerReady.value = false;
                 reinitStreamer(newConfig)
             }
             goToMain()
@@ -122,11 +126,11 @@ class MainViewModel @Inject constructor(
             // 2) re-init or create your network manager, streamer, etc.
             networkManager.initRetrofit(config)
             if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                createStreamer(config)
+                createStreamer(configFlow.value)
             } else {
                 Log.d("PERMISSION", "Audio permission not granted")
-                // Optionally, handle the lack of permission (for example, show a message)
             }
+
         }
     }
 
@@ -158,6 +162,7 @@ class MainViewModel @Inject constructor(
                 Log.d("STREAMER", "createStreamer failed", e)
                 streamerError.postValue("createStreamer: ${e.message ?: "Unknown error"}")
             }
+            _isStreamerReady.value = true;
         }
     }
 
@@ -225,7 +230,6 @@ class MainViewModel @Inject constructor(
 
     @SuppressLint("MissingPermission")
     fun reinitStreamer(newConfig: StreamConfiguration) {
-        networkManager.initRetrofit(newConfig)
         createStreamer(newConfig)
     }
 }

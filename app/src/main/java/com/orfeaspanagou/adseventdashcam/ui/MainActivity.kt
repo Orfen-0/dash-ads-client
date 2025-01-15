@@ -124,58 +124,65 @@ fun AppRootContent(viewModel: MainViewModel) {
     }
 }
 
-@Composable
-fun MainComposable(
-    modifier: Modifier = Modifier,
-    viewModel: MainViewModel,
-) {
-    val uiState by viewModel.uiState.collectAsState()
-    val streamState by viewModel.streamState.collectAsState()
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
+    @Composable
+    fun MainComposable(
+        modifier: Modifier = Modifier,
+        viewModel: MainViewModel,
     ) {
-        RegisterDevice(
-            uiState = uiState,
-            onRegisterClick = { viewModel.registerDevice() }
-        )
-        StreamCamera(
-            streamState = streamState,
-            onStreamClick = {
-                if (streamState == StreamState.Streaming) {
-                    viewModel.stopStream()
-                } else {
-                    viewModel.startStream()
-                }
-            },
-            enabled = (uiState is UiState.Success) && (
-                    streamState == StreamState.Ready ||
-                            streamState == StreamState.Streaming)
-        )
-        CameraPreview(
-            onPreviewCreated = { previewView ->
-                viewModel.attachPreview(previewView)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)  // partial bottom preview, for example
-        )
+        val uiState by viewModel.uiState.collectAsState()
+        val streamState by viewModel.streamState.collectAsState()
+        val isStreamerReady by viewModel.isStreamerReady.collectAsState()
 
 
-        // Show error if any
-        if (uiState is UiState.Error) {
-            Text(
-                text = (uiState as UiState.Error).message,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 16.dp)
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            RegisterDevice(
+                uiState = uiState,
+                onRegisterClick = { viewModel.registerDevice() }
             )
+            StreamCamera(
+                streamState = streamState,
+                onStreamClick = {
+                    if (streamState == StreamState.Streaming) {
+                        viewModel.stopStream()
+                    } else {
+                        viewModel.startStream()
+                    }
+                },
+                enabled = (uiState is UiState.Success) && (
+                        streamState == StreamState.Ready ||
+                                streamState == StreamState.Streaming)
+            )
+            if (isStreamerReady) {
+                CameraPreview(
+                    onPreviewCreated = { previewView ->
+                        viewModel.attachPreview(previewView)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                )
+            } else {
+                // Optionally, show a loading placeholder
+                Text("Initializing streamer...", style = MaterialTheme.typography.bodyMedium)
+            }
+
+
+            // Show error if any
+            if (uiState is UiState.Error) {
+                Text(
+                    text = (uiState as UiState.Error).message,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+            }
         }
     }
-}
 
 @Composable
 fun RegisterDevice(

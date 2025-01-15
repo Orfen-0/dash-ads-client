@@ -1,5 +1,6 @@
 package com.orfeaspanagou.adseventdashcam.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
@@ -21,24 +22,12 @@ fun CameraPreview(
         modifier = modifier,
         factory = { context ->
             val previewView = PreviewView(context)
+            Log.d("CameraPreview", "PreviewView created; calling onPreviewCreated")
             onPreviewCreated(previewView)
             previewView
         }
     )
 }
 
-@Composable
-fun PartialCameraPreview(
-    onPreviewCreated: (PreviewView) -> Unit
-) {
-    // A fixed 200dp height at the bottom, for example:
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp) // or a fraction of screen size
-    ) {
-        CameraPreview(onPreviewCreated = onPreviewCreated)
-    }
-}
 
 
