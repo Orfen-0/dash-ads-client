@@ -70,7 +70,7 @@ class StreamRepositoryImpl @Inject constructor(
     }
 
     override suspend fun attachPreview(previewView: PreviewView) {
-        streamManager.inflateStreamerView(previewView);
+        streamManager.inflateStreamerView(previewView)
     }
 
 

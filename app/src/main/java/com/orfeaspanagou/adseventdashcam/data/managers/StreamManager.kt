@@ -3,7 +3,6 @@ package com.orfeaspanagou.adseventdashcam.data.managers.stream
 
 import android.Manifest
 import android.content.Context
-import android.os.Build
 import androidx.annotation.RequiresPermission
 import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
 import com.orfeaspanagou.adseventdashcam.data.factory.StreamerFactory
@@ -13,7 +12,6 @@ import com.orfeaspanagou.adseventdashcam.domain.repository.StreamState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.thibaultbee.streampack.listeners.OnConnectionListener
 import io.github.thibaultbee.streampack.listeners.OnErrorListener
-import io.github.thibaultbee.streampack.streamers.StreamerLifeCycleObserver
 import io.github.thibaultbee.streampack.streamers.interfaces.IStreamer
 import io.github.thibaultbee.streampack.utils.getCameraStreamer
 import io.github.thibaultbee.streampack.utils.getFileStreamer

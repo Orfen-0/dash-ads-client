@@ -2,43 +2,31 @@ package com.orfeaspanagou.adseventdashcam.network
 
 import com.orfeaspanagou.adseventdashcam.data.api.DeviceApi
 import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Inject
 import javax.inject.Singleton
 
-@Module
-@InstallIn(SingletonComponent::class)
-object NetworkModule {
-
-    @Provides
-    @Singleton
-    fun provideNetworkManager(): NetworkManager {
-        return NetworkManager()
-    }
-}
-
-@Singleton // The manager as a whole is a singleton, but it can rebuild retrofit inside.
+@Singleton
 class NetworkManager @Inject constructor() {
 
-    private var retrofit: Retrofit? = null
-    private var deviceApi: DeviceApi? = null
+    // Use lateinit so that once we call initRetrofit, these are guaranteed to be non-null.
+    private lateinit var retrofit: Retrofit
+    private lateinit var deviceApi: DeviceApi
 
     fun initRetrofit(configuration: StreamConfiguration) {
-        val newRetrofit = Retrofit.Builder()
+        // Build a new Retrofit instance using the latest httpEndpoint from the configuration.
+        retrofit = Retrofit.Builder()
             .baseUrl(configuration.httpEndpoint)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 
-        retrofit = newRetrofit
-        deviceApi = newRetrofit.create(DeviceApi::class.java)
+        // Create a new DeviceApi using the freshly built Retrofit instance.
+        deviceApi = retrofit.create(DeviceApi::class.java)
     }
 
-    fun getDeviceApi(): DeviceApi? {
+    fun getDeviceApi(): DeviceApi {
+        // Caller is responsible to call initRetrofit() first
         return deviceApi
     }
 }

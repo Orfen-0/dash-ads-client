@@ -13,15 +13,12 @@ import com.orfeaspanagou.adseventdashcam.data.api.LocationUpdateDto
 import com.orfeaspanagou.adseventdashcam.domain.model.Location
 import com.orfeaspanagou.adseventdashcam.domain.repository.IDeviceRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import com.orfeaspanagou.adseventdashcam.network.NetworkManager
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -30,7 +27,7 @@ import kotlin.coroutines.resumeWithException
 @Singleton
 class DeviceRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val api: DeviceApi
+    private val networkManager: NetworkManager
 ) : IDeviceRepository {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -40,7 +37,6 @@ class DeviceRepositoryImpl @Inject constructor(
     override val isRegistered: Boolean get() = _isRegistered
 
     init {
-        // Start location updates when repository is created
         startLocationUpdates()
     }
 
@@ -49,32 +45,23 @@ class DeviceRepositoryImpl @Inject constructor(
     }
 
     private val locationUpdateJob = scope.launch {
-        observeLocation()
-            .collect { location ->
-                try {
-                    if(isRegistered)
-                        updateLocation()
-                } catch (e: Exception) {
-                    // Log error but continue collecting
-                    println("Failed to update location: ${e.message}")
-                }
+        observeLocation().collect { location ->
+            try {
+                if (isRegistered)
+                    updateLocation()
+            } catch (e: Exception) {
+                println("Failed to update location: ${e.message}")
             }
+        }
     }
 
     override suspend fun getDeviceId(): String {
-       // return "test-emulator"
-       return Settings.Secure.getString(
-           context.contentResolver,
-         Settings.Secure.ANDROID_ID
-        )
+        return Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
     }
 
     override suspend fun registerDevice(): Result<Unit> {
         return try {
-            val location = getCurrentLocation() ?: return Result.failure(
-                Exception("Could not get location")
-            )
-
+            val location = getCurrentLocation() ?: return Result.failure(Exception("Could not get location"))
             val registration = DeviceRegistrationDto(
                 deviceId = getDeviceId(),
                 model = Build.MODEL,
@@ -89,7 +76,8 @@ class DeviceRepositoryImpl @Inject constructor(
                 )
             )
 
-            val response = api.registerDevice(registration)
+            // Use the latest DeviceApi from NetworkManager:
+            val response = networkManager.getDeviceApi().registerDevice(registration)
             if (response.isSuccessful) {
                 _isRegistered = true
                 Result.success(Unit)
@@ -103,10 +91,7 @@ class DeviceRepositoryImpl @Inject constructor(
 
     override suspend fun updateLocation(): Result<Unit> {
         return try {
-            val location = getCurrentLocation() ?: return Result.failure(
-                Exception("Could not get location")
-            )
-
+            val location = getCurrentLocation() ?: return Result.failure(Exception("Could not get location"))
             val locationUpdate = LocationUpdateDto(
                 deviceId = getDeviceId(),
                 latitude = location.latitude,
@@ -114,8 +99,7 @@ class DeviceRepositoryImpl @Inject constructor(
                 accuracy = location.accuracy,
                 timestamp = System.currentTimeMillis()
             )
-
-            val response = api.updateLocation(locationUpdate)
+            val response = networkManager.getDeviceApi().updateLocation(locationUpdate)
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
@@ -142,16 +126,10 @@ class DeviceRepositoryImpl @Inject constructor(
 
     override suspend fun getCurrentLocation(): Location? {
         return suspendCancellableCoroutine { continuation ->
-            if (ActivityCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) != PackageManager.PERMISSION_GRANTED) {
-                continuation.resumeWithException(
-                    SecurityException("Location permission not granted")
-                )
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                continuation.resumeWithException(SecurityException("Location permission not granted"))
                 return@suspendCancellableCoroutine
             }
-
             fusedLocationClient.lastLocation
                 .addOnSuccessListener { location ->
                     if (location != null) {
@@ -164,10 +142,9 @@ class DeviceRepositoryImpl @Inject constructor(
                             )
                         )
                     } else {
-                        // Provide a default location for testing
                         continuation.resume(
                             Location(
-                                latitude = 37.4220, // Google HQ coordinates for testing
+                                latitude = 37.4220,
                                 longitude = -122.0841,
                                 accuracy = 10.0f,
                                 timestamp = System.currentTimeMillis()
@@ -175,26 +152,20 @@ class DeviceRepositoryImpl @Inject constructor(
                         )
                     }
                 }
-                .addOnFailureListener { e ->
-                    continuation.resumeWithException(e)
-                }
+                .addOnFailureListener { e -> continuation.resumeWithException(e) }
         }
     }
+
     override suspend fun checkRegistrationStatus(): Boolean {
-            return try {
-                val response = api.checkRegistrationStatus(getDeviceId())
-                val isRegistered = response.isSuccessful && response.body()?.isRegistered == true
-
-                // Update the local registration status
-                _isRegistered = isRegistered
-
-                isRegistered
-            } catch (e: Exception) {
-                // Keep current registration status on failure
-                false
-            }
+        return try {
+            val response = networkManager.getDeviceApi().checkRegistrationStatus(getDeviceId())
+            val isRegistered = response.isSuccessful && response.body()?.isRegistered == true
+            _isRegistered = isRegistered
+            isRegistered
+        } catch (e: Exception) {
+            false
+        }
     }
-
 
     companion object {
         private const val LOCATION_UPDATE_INTERVAL = 5 * 60 * 1000L // 5 minutes

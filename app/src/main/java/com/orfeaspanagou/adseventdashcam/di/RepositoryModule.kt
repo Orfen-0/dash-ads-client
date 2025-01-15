@@ -1,13 +1,12 @@
 package com.orfeaspanagou.adseventdashcam.di
 
 import android.content.Context
-import com.orfeaspanagou.adseventdashcam.data.api.DeviceApi
 import com.orfeaspanagou.adseventdashcam.data.managers.stream.StreamManager
 import com.orfeaspanagou.adseventdashcam.data.repository.DeviceRepositoryImpl
 import com.orfeaspanagou.adseventdashcam.data.repository.StreamRepositoryImpl
 import com.orfeaspanagou.adseventdashcam.domain.repository.IDeviceRepository
 import com.orfeaspanagou.adseventdashcam.domain.repository.IStreamRepository
-
+import com.orfeaspanagou.adseventdashcam.network.NetworkManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,9 +22,9 @@ object RepositoryModule {
     @Singleton
     fun provideDeviceRepository(
         @ApplicationContext context: Context,
-        api: DeviceApi
+        networkManager: NetworkManager // Inject your dynamic API provider
     ): IDeviceRepository {
-        return DeviceRepositoryImpl(context, api)
+        return DeviceRepositoryImpl(context, networkManager)
     }
 
     @Provides
@@ -34,6 +33,6 @@ object RepositoryModule {
         deviceRepository: IDeviceRepository,
         streamManager: StreamManager
     ): IStreamRepository {
-        return StreamRepositoryImpl(deviceRepository,streamManager)
+        return StreamRepositoryImpl(deviceRepository, streamManager)
     }
 }

@@ -62,7 +62,20 @@ class MainViewModel @Inject constructor(
 
     fun saveConfig(newConfig: StreamConfiguration) {
         viewModelScope.launch {
-            settingsRepository.saveConfig(newConfig)
+            val currentConfig = configFlow.value  // Or retrieve it via first()
+            settingsRepository.saveConfig(newConfig);
+            if (currentConfig.httpEndpoint != newConfig.httpEndpoint) {
+                networkManager.initRetrofit(newConfig)
+            }
+            // Optionally reinit streamer if streaming settings changed:
+            if (currentConfig.rtmpEndpoint != newConfig.rtmpEndpoint ||
+                currentConfig.bitrate != newConfig.bitrate ||
+                currentConfig.resolutionWidth != newConfig.resolutionWidth ||
+                currentConfig.resolutionHeight != newConfig.resolutionHeight ||
+                currentConfig.fps != newConfig.fps ||
+                currentConfig.audio != newConfig.audio) {
+                reinitStreamer(newConfig)
+            }
             goToMain()
         }
     }

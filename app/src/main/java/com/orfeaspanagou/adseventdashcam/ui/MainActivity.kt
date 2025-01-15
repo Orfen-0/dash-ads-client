@@ -1,8 +1,6 @@
 package com.orfeaspanagou.adseventdashcam.ui
 
 import PermissionUtils
-import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -39,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
 import com.orfeaspanagou.adseventdashcam.R
 import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
 import com.orfeaspanagou.adseventdashcam.domain.repository.StreamState
@@ -252,7 +249,6 @@ fun StreamCamera(
                 StreamState.Streaming -> "Stop Streaming"
                 StreamState.Stopping -> "Stopping Stream..."
                 is StreamState.Error -> "Error: ${streamState.message}"
-                else -> "Unknown state"
             },
             modifier = Modifier.padding(start = 8.dp)
         )
