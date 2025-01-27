@@ -1,6 +1,7 @@
 package com.orfeaspanagou.adseventdashcam.di
 
 import android.content.Context
+import com.orfeaspanagou.adseventdashcam.data.managers.MqttClientManager
 import com.orfeaspanagou.adseventdashcam.data.managers.stream.StreamManager
 import com.orfeaspanagou.adseventdashcam.data.repository.DeviceRepositoryImpl
 import com.orfeaspanagou.adseventdashcam.data.repository.StreamRepositoryImpl
@@ -22,9 +23,10 @@ object RepositoryModule {
     @Singleton
     fun provideDeviceRepository(
         @ApplicationContext context: Context,
-        networkManager: NetworkManager // Inject your dynamic API provider
+        networkManager: NetworkManager,
+        mqttClientManager: MqttClientManager
     ): IDeviceRepository {
-        return DeviceRepositoryImpl(context, networkManager)
+        return DeviceRepositoryImpl(context, networkManager, mqttClientManager)
     }
 
     @Provides

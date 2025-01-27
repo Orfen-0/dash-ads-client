@@ -7,9 +7,10 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.LocationServices
-import com.orfeaspanagou.adseventdashcam.data.api.DeviceApi
 import com.orfeaspanagou.adseventdashcam.data.api.DeviceRegistrationDto
 import com.orfeaspanagou.adseventdashcam.data.api.LocationUpdateDto
+import com.orfeaspanagou.adseventdashcam.data.managers.LocationPayload
+import com.orfeaspanagou.adseventdashcam.data.managers.MqttClientManager
 import com.orfeaspanagou.adseventdashcam.domain.model.Location
 import com.orfeaspanagou.adseventdashcam.domain.repository.IDeviceRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -27,7 +28,8 @@ import kotlin.coroutines.resumeWithException
 @Singleton
 class DeviceRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val networkManager: NetworkManager
+    private val networkManager: NetworkManager,
+    private val mqttClientManager: MqttClientManager
 ) : IDeviceRepository {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -92,19 +94,16 @@ class DeviceRepositoryImpl @Inject constructor(
     override suspend fun updateLocation(): Result<Unit> {
         return try {
             val location = getCurrentLocation() ?: return Result.failure(Exception("Could not get location"))
-            val locationUpdate = LocationUpdateDto(
+            val payload = LocationPayload(
                 deviceId = getDeviceId(),
                 latitude = location.latitude,
                 longitude = location.longitude,
                 accuracy = location.accuracy,
                 timestamp = System.currentTimeMillis()
             )
-            val response = networkManager.getDeviceApi().updateLocation(locationUpdate)
-            if (response.isSuccessful) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Location update failed: ${response.code()}"))
-            }
+            mqttClientManager.publishLocationUpdate(payload)
+
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
