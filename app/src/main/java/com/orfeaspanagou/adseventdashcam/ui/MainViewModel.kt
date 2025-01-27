@@ -15,6 +15,7 @@ import com.orfeaspanagou.adseventdashcam.domain.model.Location
 import com.orfeaspanagou.adseventdashcam.domain.repository.IDeviceRepository
 import com.orfeaspanagou.adseventdashcam.domain.repository.IStreamRepository
 import com.orfeaspanagou.adseventdashcam.data.datastore.SettingsRepository
+import com.orfeaspanagou.adseventdashcam.data.managers.MqttClientManager
 import com.orfeaspanagou.adseventdashcam.network.NetworkManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -39,7 +40,8 @@ class MainViewModel @Inject constructor(
     private val deviceRepository: IDeviceRepository,
     private val streamRepository: IStreamRepository,
     private val settingsRepository: SettingsRepository,
-    private val networkManager: NetworkManager
+    private val networkManager: NetworkManager,
+    private val mqttClientManager: MqttClientManager
 ) : ViewModel() {
 
 
@@ -97,17 +99,14 @@ class MainViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             try {
-                // Call an API method to check registration status
                 val initialConfig = configFlow.first()
             } catch (e: Exception) {
-                // If API call fails, default to Initial state
                 _uiState.value = UiState.Initial
                 println("Registration status check failed: ${e.message}")
             }
         }
 
 
-        // Your existing location observation
         viewModelScope.launch {
             try {
                 deviceRepository.observeLocation().collect { newLocation ->
@@ -124,6 +123,11 @@ class MainViewModel @Inject constructor(
             // 1) Wait for configFlow.first() or read the current configFlow.value
             val config = settingsRepository.configFlow.first()
             // 2) re-init or create your network manager, streamer, etc.
+            mqttClientManager.connect(
+                brokerUrl = "192.168.1.77",
+                brokerPort = 1883,
+                clientId = deviceRepository.getDeviceId()
+            )
             networkManager.initRetrofit(config)
             if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                 createStreamer(configFlow.value)

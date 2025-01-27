@@ -51,13 +51,6 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity(),PermissionUtils.PermissionListener {
     private val viewModel: MainViewModel by viewModels()
 
-    @Inject
-    lateinit var mqttManager: MqttClientManager
-
-    override fun onDestroy() {
-        super.onDestroy()
-        mqttManager.disconnect()
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,11 +61,7 @@ class MainActivity : ComponentActivity(),PermissionUtils.PermissionListener {
             }
         }
         PermissionUtils.checkAndRequestPermissions(this)
-        mqttManager.connect(
-            brokerUrl = "192.168.1.77",
-            brokerPort = 1883,
-            clientId = "myAndroidDevice123"
-        )
+
 
 
 
