@@ -127,11 +127,7 @@ class MainViewModel @Inject constructor(
             // 1) Wait for configFlow.first() or read the current configFlow.value
             val config = settingsRepository.configFlow.first()
             // 2) re-init or create your network manager, streamer, etc.
-            mqttClientManager.connect(
-                brokerUrl = "192.168.1.77",
-                brokerPort = 1883,
-                deviceId = deviceRepository.getDeviceId()
-            )
+
             networkManager.initRetrofit(config)
             if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                 createStreamer(configFlow.value)
@@ -140,8 +136,17 @@ class MainViewModel @Inject constructor(
             }
 
             val registered = deviceRepository.checkRegistrationStatus()
-            if(registered)
+            if(registered){
                 _uiState.value = UiState.Success
+                val (brokerUrl, port) = config.mqttBrokerUrl
+                    .split(":")
+                    .let { it[0] to it[1].toInt() }
+                mqttClientManager.connect(
+                    brokerUrl = brokerUrl,
+                    brokerPort = port,
+                    deviceId = deviceRepository.getDeviceId()
+                )
+            }
             else
                 _uiState.value = UiState.Error("Please register device first")
 
@@ -155,6 +160,15 @@ class MainViewModel @Inject constructor(
                 deviceRepository.registerDevice()
                     .onSuccess {
                         _uiState.value = UiState.Success
+                        val config = configFlow.value
+                        val (brokerUrl, port) = config.mqttBrokerUrl
+                            .split(":")
+                            .let { it[0] to it[1].toInt() }
+                        mqttClientManager.connect(
+                            brokerUrl = brokerUrl,
+                            brokerPort = port,
+                            deviceId = deviceRepository.getDeviceId()
+                        )
                     }
                     .onFailure { error ->
                         _uiState.value = UiState.Error(error.message ?: "Registration failed")
