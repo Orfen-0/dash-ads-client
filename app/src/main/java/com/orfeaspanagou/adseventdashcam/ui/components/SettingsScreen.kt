@@ -46,6 +46,13 @@ fun SettingsScreen(
         )
 
         Spacer(Modifier.height(16.dp))
+        Text("MQTT BROKER URL")
+        OutlinedTextField(
+            value = tempConfig.mqttBrokerUrl,
+            onValueChange = { tempConfig = tempConfig.copy(mqttBrokerUrl = it) }
+        )
+
+        Spacer(Modifier.height(16.dp))
         Text("Default Offline Storage Path")
         OutlinedTextField(
             value = tempConfig.fileEndpoint,

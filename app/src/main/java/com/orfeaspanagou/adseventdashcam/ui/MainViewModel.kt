@@ -72,6 +72,10 @@ class MainViewModel @Inject constructor(
             if (currentConfig.httpEndpoint != newConfig.httpEndpoint) {
                 networkManager.initRetrofit(newConfig)
             }
+            if(currentConfig.mqttBrokerUrl != newConfig.mqttBrokerUrl){
+                val port = newConfig.mqttBrokerUrl.split(":")[1].toInt()
+                mqttClientManager.reinit(newConfig.mqttBrokerUrl,port,deviceRepository.getDeviceId());
+            }
             // Optionally reinit streamer if streaming settings changed:
             if (currentConfig.rtmpEndpoint != newConfig.rtmpEndpoint ||
                 currentConfig.bitrate != newConfig.bitrate ||
@@ -126,7 +130,7 @@ class MainViewModel @Inject constructor(
             mqttClientManager.connect(
                 brokerUrl = "192.168.1.77",
                 brokerPort = 1883,
-                clientId = deviceRepository.getDeviceId()
+                deviceId = deviceRepository.getDeviceId()
             )
             networkManager.initRetrofit(config)
             if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
@@ -134,6 +138,12 @@ class MainViewModel @Inject constructor(
             } else {
                 Log.d("PERMISSION", "Audio permission not granted")
             }
+
+            val registered = deviceRepository.checkRegistrationStatus()
+            if(registered)
+                _uiState.value = UiState.Success
+            else
+                _uiState.value = UiState.Error("Please register device first")
 
         }
     }

@@ -167,7 +167,7 @@ class DeviceRepositoryImpl @Inject constructor(
     }
 
     companion object {
-        private const val LOCATION_UPDATE_INTERVAL = 5 * 60 * 1000L // 5 minutes
+        private const val LOCATION_UPDATE_INTERVAL = 90 * 1000L // 5 minutes
         private const val RETRY_INTERVAL = 30 * 1000L // 30 seconds
     }
 }

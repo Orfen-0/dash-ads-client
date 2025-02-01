@@ -38,7 +38,7 @@ class MqttClientManager @Inject constructor(){
      * Connect to the MQTT broker with auto-reconnect enabled.
      * e.g. brokerUrl = "192.168.1.77", brokerPort = 1883, clientId = "myAndroidDevice"
      */
-    fun connect(brokerUrl: String, brokerPort: Int, clientId: String): CompletableFuture<Mqtt5ConnAck>? {
+    fun connect(brokerUrl: String, brokerPort: Int, deviceId: String): CompletableFuture<Mqtt5ConnAck>? {
         if (client != null && client!!.state.isConnectedOrReconnect) {
             Log.d(tag, "Already connected or reconnecting.")
             return null
@@ -46,7 +46,7 @@ class MqttClientManager @Inject constructor(){
         // build an async MQTT 5 client
         client = MqttClient.builder()
             .useMqttVersion5()
-            .identifier(clientId)
+            .identifier(deviceId)
             .serverHost(brokerUrl)
             .serverPort(brokerPort)
             .automaticReconnectWithDefaultConfig() // auto reconnect
@@ -67,6 +67,7 @@ class MqttClientManager @Inject constructor(){
                 }
             } else {
                 Log.d(tag, "Connected! ack=$ack")
+                subscribeToTopic("devices/${deviceId}/cmd")
             }
         }
         return connectFuture
@@ -110,7 +111,9 @@ class MqttClientManager @Inject constructor(){
                 val receivedTopic = publish.topic.toString()
                 val payloadString = String(publish.payloadAsBytes, StandardCharsets.UTF_8)
                 Log.d(tag, "Received message on $receivedTopic: $payloadString")
-                // handle commands or ack
+                if(topicFilter.endsWith("cmd")){
+                    handleCommand(payloadString)
+                }
             }
             .send()
             .whenComplete { subAck, ex ->
@@ -122,9 +125,10 @@ class MqttClientManager @Inject constructor(){
             }
     }
 
-    /**
-     * Cleanly disconnect if needed
-     */
+    fun handleCommand(payload: String) {
+        Log.d(tag, "Received $payload")
+    }
+
     fun disconnect() {
         val localClient = client
         if (localClient != null && localClient.state.isConnected) {
@@ -137,5 +141,10 @@ class MqttClientManager @Inject constructor(){
                     }
                 }
         }
+    }
+
+    fun reinit(mqttBrokerUrl: String,brokerPort: Int, deviceId: String){
+        disconnect();
+        connect(mqttBrokerUrl,brokerPort,deviceId)
     }
 }

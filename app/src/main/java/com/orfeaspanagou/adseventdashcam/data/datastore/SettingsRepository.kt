@@ -16,6 +16,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             audio = prefs[ConfigKeys.AUDIO] ?: false,
             rtmpEndpoint = prefs[ConfigKeys.RTMP_ENDPOINT] ?: "rtmp://192.168.1.77:1935/live/stream",
             httpEndpoint = prefs[ConfigKeys.HTTP_ENDPOINT] ?: "http://192.168.1.77:8080/",
+            mqttBrokerUrl = prefs[ConfigKeys.MQTT_BROKER_URL] ?: "mqtt://192.168.1.77:1883",
             fileEndpoint = "path",
             bitrate = prefs[ConfigKeys.BITRATE] ?: 2000,
             resolutionWidth = prefs[ConfigKeys.RES_WIDTH] ?: 1280,

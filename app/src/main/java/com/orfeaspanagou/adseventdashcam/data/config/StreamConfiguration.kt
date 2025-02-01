@@ -26,6 +26,7 @@ object ConfigKeys {
     val AUDIO = booleanPreferencesKey("audio")
     val RTMP_ENDPOINT = stringPreferencesKey("rtmpEndpoint")
     val HTTP_ENDPOINT = stringPreferencesKey("httpEndpoint")
+    val MQTT_BROKER_URL = stringPreferencesKey("mqttBrokerUrl")
     val FILE_ENDPOINT = stringPreferencesKey("fileEndpoint")
     val BITRATE = intPreferencesKey("bitrate")
     val RES_WIDTH = intPreferencesKey("resolutionWidth")

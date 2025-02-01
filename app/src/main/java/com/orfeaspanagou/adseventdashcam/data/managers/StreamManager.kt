@@ -3,6 +3,7 @@ package com.orfeaspanagou.adseventdashcam.data.managers.stream
 
 import android.Manifest
 import android.content.Context
+import android.util.Log
 import androidx.annotation.RequiresPermission
 import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
 import com.orfeaspanagou.adseventdashcam.data.factory.StreamerFactory
@@ -19,6 +20,7 @@ import io.github.thibaultbee.streampack.utils.getLiveStreamer
 import io.github.thibaultbee.streampack.utils.getStreamer
 import io.github.thibaultbee.streampack.views.PreviewView
 import isConnected
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
@@ -60,8 +62,18 @@ class StreamManager @Inject constructor(
 
     }
 
-    fun inflateStreamerView(view: PreviewView) {
-        view.streamer = streamer?.getStreamer()
+    suspend fun inflateStreamerView(previewView: PreviewView) {
+        if (!previewView.isAttachedToWindow || previewView.width == 0 || previewView.height == 0) {
+            Log.d("STREAMER", "PreviewView not ready (not attached or has zero size). Retrying in 5 seconds...")
+            delay(5000)
+            if (!previewView.isAttachedToWindow || previewView.width == 0 || previewView.height == 0) {
+                Log.e("STREAMER", "PreviewView still not ready after retry. Aborting attachPreview.")
+                return
+            }
+        }
+        // At this point, the view is attached and its dimensions are set,
+        // so its underlying surface should be available.
+        previewView.streamer = streamer?.getStreamer()
         _streamState.value = StreamState.Ready
     }
 
