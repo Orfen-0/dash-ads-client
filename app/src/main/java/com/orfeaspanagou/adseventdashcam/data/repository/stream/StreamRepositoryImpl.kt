@@ -22,7 +22,7 @@ class StreamRepositoryImpl @Inject constructor(
 
     override val streamState = streamManager.streamState
 
-    override suspend fun startStream(): Result<Unit> {
+    override suspend fun startStream(eventId: String): Result<Unit> {
         return try {
             if (!deviceRepository.isRegistered) {
                 return Result.failure(Exception("Device not registered"))
@@ -31,7 +31,7 @@ class StreamRepositoryImpl @Inject constructor(
             deviceRepository.getCurrentLocation()?.let { location ->
                 val deviceId = deviceRepository.getDeviceId()
 
-                streamManager.startStream(deviceId,location)
+                streamManager.startStream(deviceId,location, eventId)
                 Result.success(Unit)
             } ?: Result.failure(Exception("Could not get location"))
 

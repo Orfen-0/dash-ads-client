@@ -18,7 +18,7 @@ sealed class StreamState {
 
 interface IStreamRepository {
     val streamState: StateFlow<StreamState>
-    suspend fun startStream(): Result<Unit>
+    suspend fun startStream(eventId:String): Result<Unit>
     suspend fun attachPreview(previewView: PreviewView)
     suspend fun stopStream(): Result<Unit>
     suspend fun initializeStreamer(configuration: StreamConfiguration,onErrorListener: OnErrorListener, onConnectionListener: OnConnectionListener):Result<Unit>

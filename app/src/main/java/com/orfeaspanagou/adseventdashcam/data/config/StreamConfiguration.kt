@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 data class StreamConfiguration(
     var audio: Boolean = true,
     var endpointType: EndpointType = EndpointType.RTMP,
+    var mqttBrokerUrl: String = "mqtt://192.168.1.77:1883",
     var rtmpEndpoint: String = "rtmp://192.168.1.77:1935/live/stream",
     var httpEndpoint: String = "http://192.168.1.77:8080/",
     var fileEndpoint: String = "/path/to/default.mp4",
@@ -25,6 +26,7 @@ object ConfigKeys {
     val AUDIO = booleanPreferencesKey("audio")
     val RTMP_ENDPOINT = stringPreferencesKey("rtmpEndpoint")
     val HTTP_ENDPOINT = stringPreferencesKey("httpEndpoint")
+    val MQTT_BROKER_URL = stringPreferencesKey("mqttBrokerUrl")
     val FILE_ENDPOINT = stringPreferencesKey("fileEndpoint")
     val BITRATE = intPreferencesKey("bitrate")
     val RES_WIDTH = intPreferencesKey("resolutionWidth")

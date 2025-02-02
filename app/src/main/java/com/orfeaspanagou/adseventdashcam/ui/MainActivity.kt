@@ -39,15 +39,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.orfeaspanagou.adseventdashcam.R
 import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
+import com.orfeaspanagou.adseventdashcam.data.managers.MqttClientManager
 import com.orfeaspanagou.adseventdashcam.domain.repository.StreamState
 import com.orfeaspanagou.adseventdashcam.ui.components.CameraPreview
 import com.orfeaspanagou.adseventdashcam.ui.components.SettingsScreen
 import com.orfeaspanagou.adseventdashcam.ui.theme.ADSEventDashcamTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity(),PermissionUtils.PermissionListener {
     private val viewModel: MainViewModel by viewModels()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,6 +61,10 @@ class MainActivity : ComponentActivity(),PermissionUtils.PermissionListener {
             }
         }
         PermissionUtils.checkAndRequestPermissions(this)
+
+
+
+
     }
 
     override fun onPermissionsGranted() {
@@ -76,6 +83,8 @@ class MainActivity : ComponentActivity(),PermissionUtils.PermissionListener {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         PermissionUtils.handlePermissionResult(requestCode, permissions, grantResults, this)
     }
+
+
 }
 
 

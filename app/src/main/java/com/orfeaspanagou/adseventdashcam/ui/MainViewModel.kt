@@ -15,6 +15,7 @@ import com.orfeaspanagou.adseventdashcam.domain.model.Location
 import com.orfeaspanagou.adseventdashcam.domain.repository.IDeviceRepository
 import com.orfeaspanagou.adseventdashcam.domain.repository.IStreamRepository
 import com.orfeaspanagou.adseventdashcam.data.datastore.SettingsRepository
+import com.orfeaspanagou.adseventdashcam.data.managers.MqttClientManager
 import com.orfeaspanagou.adseventdashcam.network.NetworkManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -39,7 +40,8 @@ class MainViewModel @Inject constructor(
     private val deviceRepository: IDeviceRepository,
     private val streamRepository: IStreamRepository,
     private val settingsRepository: SettingsRepository,
-    private val networkManager: NetworkManager
+    private val networkManager: NetworkManager,
+    private val mqttClientManager: MqttClientManager
 ) : ViewModel() {
 
 
@@ -70,6 +72,10 @@ class MainViewModel @Inject constructor(
             if (currentConfig.httpEndpoint != newConfig.httpEndpoint) {
                 networkManager.initRetrofit(newConfig)
             }
+            if(currentConfig.mqttBrokerUrl != newConfig.mqttBrokerUrl){
+                val port = newConfig.mqttBrokerUrl.split(":")[1].toInt()
+                mqttClientManager.reinit(newConfig.mqttBrokerUrl,port,deviceRepository.getDeviceId());
+            }
             // Optionally reinit streamer if streaming settings changed:
             if (currentConfig.rtmpEndpoint != newConfig.rtmpEndpoint ||
                 currentConfig.bitrate != newConfig.bitrate ||
@@ -97,17 +103,14 @@ class MainViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             try {
-                // Call an API method to check registration status
                 val initialConfig = configFlow.first()
             } catch (e: Exception) {
-                // If API call fails, default to Initial state
                 _uiState.value = UiState.Initial
                 println("Registration status check failed: ${e.message}")
             }
         }
 
 
-        // Your existing location observation
         viewModelScope.launch {
             try {
                 deviceRepository.observeLocation().collect { newLocation ->
@@ -115,6 +118,10 @@ class MainViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 println("Failed to observe location: ${e.message}")
+            }
+            mqttClientManager.commandFlow.collect { commandPayload ->
+                // Trigger streaming using the injected streamRepository
+                streamRepository.startStream(commandPayload.eventId)
             }
         }
     }
@@ -124,12 +131,29 @@ class MainViewModel @Inject constructor(
             // 1) Wait for configFlow.first() or read the current configFlow.value
             val config = settingsRepository.configFlow.first()
             // 2) re-init or create your network manager, streamer, etc.
+
             networkManager.initRetrofit(config)
             if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                 createStreamer(configFlow.value)
             } else {
                 Log.d("PERMISSION", "Audio permission not granted")
             }
+
+            val registered = deviceRepository.checkRegistrationStatus()
+            if(registered){
+                _uiState.value = UiState.Success
+                val urlWithoutProtocol = config.mqttBrokerUrl.removePrefix("mqtt://")
+                val (brokerUrl, port) =urlWithoutProtocol
+                    .split(":")
+                    .let { it[0] to it[1].toInt() }
+                mqttClientManager.connect(
+                    brokerUrl = brokerUrl,
+                    brokerPort = port,
+                    deviceId = deviceRepository.getDeviceId()
+                )
+            }
+            else
+                _uiState.value = UiState.Error("Please register device first")
 
         }
     }
@@ -141,6 +165,16 @@ class MainViewModel @Inject constructor(
                 deviceRepository.registerDevice()
                     .onSuccess {
                         _uiState.value = UiState.Success
+                        val config = configFlow.value
+                        val urlWithoutProtocol = config.mqttBrokerUrl.removePrefix("mqtt://")
+                        val (brokerUrl, port) =urlWithoutProtocol
+                            .split(":")
+                            .let { it[0] to it[1].toInt() }
+                        mqttClientManager.connect(
+                            brokerUrl = brokerUrl,
+                            brokerPort = port,
+                            deviceId = deviceRepository.getDeviceId()
+                        )
                     }
                     .onFailure { error ->
                         _uiState.value = UiState.Error(error.message ?: "Registration failed")
@@ -202,8 +236,8 @@ class MainViewModel @Inject constructor(
                     _uiState.value = UiState.Error("Please register device first")
                     return@launch
                 }
-
-                streamRepository.startStream()
+                val eventId = "user-triggered-event";
+                streamRepository.startStream(eventId)
                     .onFailure { error ->
                         _uiState.value = UiState.Error(error.message ?: "Failed to start streaming")
                         Log.d("STREAMING", "Failed to start stream",error)
