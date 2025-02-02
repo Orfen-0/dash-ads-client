@@ -16,6 +16,7 @@ import com.orfeaspanagou.adseventdashcam.domain.repository.IDeviceRepository
 import com.orfeaspanagou.adseventdashcam.domain.repository.IStreamRepository
 import com.orfeaspanagou.adseventdashcam.data.datastore.SettingsRepository
 import com.orfeaspanagou.adseventdashcam.data.managers.MqttClientManager
+import com.orfeaspanagou.adseventdashcam.domain.repository.StreamState
 import com.orfeaspanagou.adseventdashcam.network.NetworkManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.stream.Stream
 import javax.inject.Inject
 
 
@@ -48,6 +50,8 @@ class MainViewModel @Inject constructor(
     private val _isStreamerReady = MutableStateFlow(false)
     val isStreamerReady = _isStreamerReady.asStateFlow()
 
+    var currentPreviewView: PreviewView? = null
+
     val configFlow = settingsRepository.configFlow.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -63,6 +67,10 @@ class MainViewModel @Inject constructor(
 
     fun goToMain() {
         _currentScreen.value = AppScreen.MAIN
+    }
+
+    fun resetStreamerReady() {
+        _isStreamerReady.value = false
     }
 
     fun saveConfig(newConfig: StreamConfiguration) {
@@ -119,9 +127,24 @@ class MainViewModel @Inject constructor(
             } catch (e: Exception) {
                 println("Failed to observe location: ${e.message}")
             }
+        }
+
+        viewModelScope.launch {
             mqttClientManager.commandFlow.collect { commandPayload ->
-                // Trigger streaming using the injected streamRepository
-                streamRepository.startStream(commandPayload.eventId)
+                try {
+                    Log.d("MainViewModel", "Received command: $commandPayload")
+                    if(commandPayload.command == "startStream"){
+                        if(streamRepository.streamState.value == StreamState.Ready)
+                        streamRepository.startStream(commandPayload.eventId)
+                        Log.d("MainViewModel", "Started stream with eventId: ${commandPayload.eventId}")
+                    }
+                    if(commandPayload.command == "stopStreaming") {
+                        if (streamRepository.streamState.value == StreamState.Streaming)
+                            streamRepository.stopStream()
+                    }
+                } catch (e: Exception) {
+                    Log.e("MainViewModel", "Error starting stream: ${e.message}")
+                }
             }
         }
     }
@@ -223,8 +246,10 @@ class MainViewModel @Inject constructor(
     }
 
     fun attachPreview(previewView: PreviewView) {
+        currentPreviewView = previewView
         viewModelScope.launch {
             streamRepository.attachPreview(previewView)
+            _isStreamerReady.value = true
         }
     }
 

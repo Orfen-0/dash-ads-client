@@ -83,7 +83,14 @@ class MainActivity : ComponentActivity(),PermissionUtils.PermissionListener {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         PermissionUtils.handlePermissionResult(requestCode, permissions, grantResults, this)
     }
-
+    override fun onResume() {
+        super.onResume()
+        viewModel.resetStreamerReady()
+        viewModel.currentPreviewView?.let { preview ->
+            // Reattach the preview to update the surface in the streamer.
+            viewModel.attachPreview(preview)
+        }
+    }
 
 }
 
@@ -165,7 +172,7 @@ fun AppRootContent(viewModel: MainViewModel) {
                 },
                 enabled = (uiState is UiState.Success) && (
                         streamState == StreamState.Ready ||
-                                streamState == StreamState.Streaming)
+                                streamState == StreamState.Streaming) && isStreamerReady
             )
             if (isStreamerReady) {
                 CameraPreview(
