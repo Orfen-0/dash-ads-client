@@ -140,15 +140,6 @@ class DeviceRepositoryImpl @Inject constructor(
                                 timestamp = location.time
                             )
                         )
-                    } else {
-                        continuation.resume(
-                            Location(
-                                latitude = 37.4220,
-                                longitude = -122.0841,
-                                accuracy = 10.0f,
-                                timestamp = System.currentTimeMillis()
-                            )
-                        )
                     }
                 }
                 .addOnFailureListener { e -> continuation.resumeWithException(e) }

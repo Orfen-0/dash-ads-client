@@ -119,6 +119,10 @@ class MainViewModel @Inject constructor(
             } catch (e: Exception) {
                 println("Failed to observe location: ${e.message}")
             }
+            mqttClientManager.commandFlow.collect { commandPayload ->
+                // Trigger streaming using the injected streamRepository
+                streamRepository.startStream(commandPayload.eventId)
+            }
         }
     }
 
@@ -138,7 +142,8 @@ class MainViewModel @Inject constructor(
             val registered = deviceRepository.checkRegistrationStatus()
             if(registered){
                 _uiState.value = UiState.Success
-                val (brokerUrl, port) = config.mqttBrokerUrl
+                val urlWithoutProtocol = config.mqttBrokerUrl.removePrefix("mqtt://")
+                val (brokerUrl, port) =urlWithoutProtocol
                     .split(":")
                     .let { it[0] to it[1].toInt() }
                 mqttClientManager.connect(
@@ -161,7 +166,8 @@ class MainViewModel @Inject constructor(
                     .onSuccess {
                         _uiState.value = UiState.Success
                         val config = configFlow.value
-                        val (brokerUrl, port) = config.mqttBrokerUrl
+                        val urlWithoutProtocol = config.mqttBrokerUrl.removePrefix("mqtt://")
+                        val (brokerUrl, port) =urlWithoutProtocol
                             .split(":")
                             .let { it[0] to it[1].toInt() }
                         mqttClientManager.connect(
@@ -230,8 +236,8 @@ class MainViewModel @Inject constructor(
                     _uiState.value = UiState.Error("Please register device first")
                     return@launch
                 }
-
-                streamRepository.startStream()
+                val eventId = "user-triggered-event";
+                streamRepository.startStream(eventId)
                     .onFailure { error ->
                         _uiState.value = UiState.Error(error.message ?: "Failed to start streaming")
                         Log.d("STREAMING", "Failed to start stream",error)

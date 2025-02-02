@@ -78,7 +78,7 @@ class StreamManager @Inject constructor(
     }
 
 
-    suspend fun startStream(deviceId: String, currentLocation: Location) {
+    suspend fun startStream(deviceId: String, currentLocation: Location, eventId: String) {
         if (_streamState.value != StreamState.Ready) {
             _streamState.value = StreamState.Error("Must open preview before starting stream")
             return
@@ -95,6 +95,7 @@ class StreamManager @Inject constructor(
                     append("&lng=");      append(currentLocation.longitude)
                     append("&acc=");      append(currentLocation.accuracy)
                     append("&ts=");       append(currentLocation.timestamp)
+                    append("&eventId");   append(eventId)
                 }
 
                 streamer?.getLiveStreamer()?.connect(rtmpUrlWithParams)

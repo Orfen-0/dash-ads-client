@@ -9,6 +9,13 @@ import com.hivemq.client.mqtt.datatypes.MqttQos
 import com.hivemq.client.mqtt.exceptions.ConnectionFailedException
 import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient
 import com.hivemq.client.mqtt.mqtt5.message.connect.connack.Mqtt5ConnAck
+import com.orfeaspanagou.adseventdashcam.domain.repository.IStreamRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import javax.inject.Inject
@@ -22,17 +29,28 @@ data class LocationPayload(
     val timestamp: Long
 )
 
+
+data class CommandPayload(
+    val command: String,
+    val eventId: String
+)
+
+
 /**
  * A simple manager for HiveMQ MQTT Client on Android.
  */
 @Singleton
-class MqttClientManager @Inject constructor(){
-
+class MqttClientManager @Inject constructor() {
     private val tag = "HiveMqttClientManager"
     private val gson = Gson()
 
     // Our async MQTT5 client
     private var client: Mqtt5AsyncClient? = null
+    private var deviceId: String? = null
+    private val _commandFlow = MutableSharedFlow<CommandPayload>()
+    val commandFlow = _commandFlow.asSharedFlow()
+    // A dedicated CoroutineScope for asynchronous operations in this manager.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
      * Connect to the MQTT broker with auto-reconnect enabled.
@@ -43,7 +61,7 @@ class MqttClientManager @Inject constructor(){
             Log.d(tag, "Already connected or reconnecting.")
             return null
         }
-        // build an async MQTT 5 client
+        this.deviceId = deviceId
         client = MqttClient.builder()
             .useMqttVersion5()
             .identifier(deviceId)
@@ -127,7 +145,41 @@ class MqttClientManager @Inject constructor(){
 
     fun handleCommand(payload: String) {
         Log.d(tag, "Received $payload")
+
+        // Parse the command payload from JSON.
+        val commandPayload = try {
+            gson.fromJson(payload, CommandPayload::class.java)
+        } catch (e: Exception) {
+            Log.e(tag, "Error parsing command payload: ${e.message}")
+            return
+        }
+
+        // Build and publish an ACK message on "devices/{deviceId}/ack"
+        val currentDeviceId = deviceId
+        if (currentDeviceId == null) {
+            Log.e(tag, "Device ID not set; cannot publish ACK.")
+            return
+        }
+        val ackPayload = """{"status": "received", "command": "${commandPayload.command}"}"""
+        val ackTopic = "devices/$currentDeviceId/acks"
+        client?.publishWith()
+            ?.topic(ackTopic)
+            ?.payload(ackPayload.toByteArray(StandardCharsets.UTF_8))
+            ?.send()
+            ?.whenComplete { ack, ex ->
+                if (ex != null) {
+                    Log.e(tag, "Error publishing ACK on $ackTopic: ${ex.message}")
+                } else {
+                    Log.d(tag, "ACK published successfully on $ackTopic: $ack")
+                }
+            }
+
+        // Start streaming automatically by launching a coroutine.
+        scope.launch {
+            _commandFlow.emit(commandPayload)
+        }
     }
+
 
     fun disconnect() {
         val localClient = client
