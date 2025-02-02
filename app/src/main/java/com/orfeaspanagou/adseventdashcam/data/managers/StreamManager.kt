@@ -95,7 +95,7 @@ class StreamManager @Inject constructor(
                     append("&lng=");      append(currentLocation.longitude)
                     append("&acc=");      append(currentLocation.accuracy)
                     append("&ts=");       append(currentLocation.timestamp)
-                    append("&eventId");   append(eventId)
+                    append("&eventId=");   append(eventId)
                 }
 
                 streamer?.getLiveStreamer()?.connect(rtmpUrlWithParams)
