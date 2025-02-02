@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.stream.Stream
 import javax.inject.Inject
 
 
@@ -132,8 +133,15 @@ class MainViewModel @Inject constructor(
             mqttClientManager.commandFlow.collect { commandPayload ->
                 try {
                     Log.d("MainViewModel", "Received command: $commandPayload")
-                    streamRepository.startStream(commandPayload.eventId)
-                    Log.d("MainViewModel", "Started stream with eventId: ${commandPayload.eventId}")
+                    if(commandPayload.command == "startStream"){
+                        if(streamRepository.streamState.value == StreamState.Ready)
+                        streamRepository.startStream(commandPayload.eventId)
+                        Log.d("MainViewModel", "Started stream with eventId: ${commandPayload.eventId}")
+                    }
+                    if(commandPayload.command == "stopStreaming") {
+                        if (streamRepository.streamState.value == StreamState.Streaming)
+                            streamRepository.stopStream()
+                    }
                 } catch (e: Exception) {
                     Log.e("MainViewModel", "Error starting stream: ${e.message}")
                 }
