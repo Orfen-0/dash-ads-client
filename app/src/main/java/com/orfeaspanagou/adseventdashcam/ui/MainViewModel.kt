@@ -81,7 +81,7 @@ class MainViewModel @Inject constructor(
                 networkManager.initRetrofit(newConfig)
             }
             if(currentConfig.mqttBrokerUrl != newConfig.mqttBrokerUrl){
-                val port = newConfig.mqttBrokerUrl.split(":")[1].toInt()
+                val port = newConfig.mqttBrokerUrl.split(":")[2].toInt()
                 mqttClientManager.reinit(newConfig.mqttBrokerUrl,port,deviceRepository.getDeviceId());
             }
             // Optionally reinit streamer if streaming settings changed:
@@ -132,15 +132,30 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             mqttClientManager.commandFlow.collect { commandPayload ->
                 try {
-                    Log.d("MainViewModel", "Received command: $commandPayload")
+                    mqttClientManager.publishLog("info","mqtt_command", "Received command ${commandPayload}")
                     if(commandPayload.command == "startStream"){
-                        if(streamRepository.streamState.value == StreamState.Ready)
-                        streamRepository.startStream(commandPayload.eventId)
-                        Log.d("MainViewModel", "Started stream with eventId: ${commandPayload.eventId}")
+                        mqttClientManager.publishLog("info","mqtt_command", "Received startStream with eventId: ${commandPayload.eventId}")
+
+
+                        if(streamRepository.streamState.value == StreamState.Ready) {
+                            streamRepository.startStream(commandPayload.eventId)
+                            Log.d(
+                                "MainViewModel",
+                                "Started stream with eventId: ${commandPayload.eventId}"
+                            )
+                            mqttClientManager.publishLog(
+                                "info",
+                                "stream_start",
+                                "Stream started for eventId: ${commandPayload.eventId}"
+                            )
+                        }
                     }
                     if(commandPayload.command == "stopStreaming") {
-                        if (streamRepository.streamState.value == StreamState.Streaming)
+                        if (streamRepository.streamState.value == StreamState.Streaming){
+                            mqttClientManager.publishLog("info","stream_stop", "Stream stopped manually or by command")
                             streamRepository.stopStream()
+                        }
+
                     }
                 } catch (e: Exception) {
                     Log.e("MainViewModel", "Error starting stream: ${e.message}")

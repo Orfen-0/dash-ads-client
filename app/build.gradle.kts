@@ -83,6 +83,8 @@ dependencies {
 
     // Location
     implementation("com.google.android.gms:play-services-location:21.1.0")
+    // Logging
+    implementation("com.jakewharton.timber:timber:5.0.1")
 
     // Hilt
     implementation("com.google.dagger:hilt-android:2.50")

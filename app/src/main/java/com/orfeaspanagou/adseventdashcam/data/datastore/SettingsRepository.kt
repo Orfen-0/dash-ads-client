@@ -31,6 +31,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             prefs[ConfigKeys.AUDIO] = newConfig.audio
             prefs[ConfigKeys.RTMP_ENDPOINT] = newConfig.rtmpEndpoint
             prefs[ConfigKeys.HTTP_ENDPOINT] = newConfig.httpEndpoint
+            prefs[ConfigKeys.MQTT_BROKER_URL] = newConfig.mqttBrokerUrl
             prefs[ConfigKeys.FILE_ENDPOINT] = newConfig.fileEndpoint
             prefs[ConfigKeys.BITRATE] = newConfig.bitrate
             prefs[ConfigKeys.RES_WIDTH] = newConfig.resolutionWidth
