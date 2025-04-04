@@ -29,6 +29,14 @@ data class LocationPayload(
     val timestamp: Long
 )
 
+data class LogPayload(
+    val timestamp: Long,
+    val level: String,
+    val tag: String,
+    val message: String
+)
+
+
 
 data class CommandPayload(
     val command: String,
@@ -85,6 +93,8 @@ class MqttClientManager @Inject constructor() {
                 }
             } else {
                 Log.d(tag, "Connected! ack=$ack")
+                publishLog("info", "mqtt_connect", "Connected to broker at $brokerUrl:$brokerPort as $deviceId")
+
                 subscribeToTopic("devices/${deviceId}/cmd")
             }
         }
@@ -111,9 +121,10 @@ class MqttClientManager @Inject constructor() {
 
         publishFuture.whenComplete { publishResult, pubEx ->
             if (pubEx != null) {
-                Log.e(tag, "Error publishing location to $topic: ${pubEx.message}")
+                publishLog("error","location_update", "could not send location update")
+
             } else {
-                Log.d(tag, "Location published to $topic: $publishResult")
+                publishLog("info","location_update", "Location sent for device ${payload.deviceId}")
             }
         }
     }
@@ -179,6 +190,39 @@ class MqttClientManager @Inject constructor() {
             _commandFlow.emit(commandPayload)
         }
     }
+
+
+    fun publishLog(level: String, tag: String, message: String) {
+        val localClient = client
+        if (localClient == null || !localClient.state.isConnected) {
+            Log.e(tag, "MQTT client not connected; cannot publish log.")
+            return
+        }
+
+        val topic = "devices/${deviceId}/logs"
+        val logPayload = LogPayload(
+            timestamp = System.currentTimeMillis(),
+            level = level,
+            tag = tag,
+            message = message
+        )
+        val jsonString = gson.toJson(logPayload)
+        localClient.publishWith()
+            .topic(topic)
+            .payload(jsonString.toByteArray(StandardCharsets.UTF_8))
+            .qos(MqttQos.AT_MOST_ONCE)
+            .send()
+            .whenComplete { result, error ->
+                if (error != null) {
+                    Log.e(tag, "Error publishing log: ${error.message}")
+                } else {
+                    Log.d(tag, "Log published: $jsonString")
+                }
+            }
+    }
+
+
+
 
 
     fun disconnect() {

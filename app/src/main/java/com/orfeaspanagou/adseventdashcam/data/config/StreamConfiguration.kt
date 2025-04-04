@@ -11,9 +11,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 data class StreamConfiguration(
     var audio: Boolean = true,
     var endpointType: EndpointType = EndpointType.RTMP,
-    var mqttBrokerUrl: String = "mqtt://192.168.1.77:1883",
-    var rtmpEndpoint: String = "rtmp://192.168.1.77:1935/live/stream",
-    var httpEndpoint: String = "http://192.168.1.77:8080/",
+    var mqttBrokerUrl: String = "mqtt://195.251.127.196:1883",
+    var rtmpEndpoint: String = "rtmp://195.251.127.196:1935/live/stream",
+    var httpEndpoint: String = "http://195.251.127.196:8080/",
     var fileEndpoint: String = "/path/to/default.mp4",
     var streamingEnabled: Boolean = false,
     var bitrate: Int = 2000000, // in kb/s or b/s depending on your usage
