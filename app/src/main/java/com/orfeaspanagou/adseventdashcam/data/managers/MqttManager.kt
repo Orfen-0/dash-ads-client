@@ -33,7 +33,9 @@ data class LogPayload(
     val timestamp: Long,
     val level: String,
     val tag: String,
-    val message: String
+    val message: String,
+    val eventId: String? = null,
+    val deviceId: String? = null
 )
 
 
@@ -192,27 +194,35 @@ class MqttClientManager @Inject constructor() {
     }
 
 
-    fun publishLog(level: String, tag: String, message: String) {
+    fun publishLog(
+        level: String,
+        tag: String,
+        message: String,
+        eventId: String? = null,
+    ) {
         val localClient = client
         if (localClient == null || !localClient.state.isConnected) {
             Log.e(tag, "MQTT client not connected; cannot publish log.")
             return
         }
 
-        val topic = "devices/${deviceId}/logs"
         val logPayload = LogPayload(
             timestamp = System.currentTimeMillis(),
             level = level,
             tag = tag,
-            message = message
+            message = message,
+            deviceId = deviceId,
+            eventId = eventId,
         )
+
         val jsonString = gson.toJson(logPayload)
+        val topic = "devices/${deviceId}/logs"
         localClient.publishWith()
             .topic(topic)
             .payload(jsonString.toByteArray(StandardCharsets.UTF_8))
             .qos(MqttQos.AT_MOST_ONCE)
             .send()
-            .whenComplete { result, error ->
+            .whenComplete { _, error ->
                 if (error != null) {
                     Log.e(tag, "Error publishing log: ${error.message}")
                 } else {
@@ -220,6 +230,7 @@ class MqttClientManager @Inject constructor() {
                 }
             }
     }
+
 
 
 

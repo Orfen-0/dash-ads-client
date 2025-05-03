@@ -24,11 +24,15 @@ import io.github.thibaultbee.streampack.error.StreamPackError
 import io.github.thibaultbee.streampack.listeners.OnConnectionListener
 import io.github.thibaultbee.streampack.listeners.OnErrorListener
 import io.github.thibaultbee.streampack.views.PreviewView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.stream.Stream
 import javax.inject.Inject
@@ -49,6 +53,7 @@ class MainViewModel @Inject constructor(
 
     private val _isStreamerReady = MutableStateFlow(false)
     val isStreamerReady = _isStreamerReady.asStateFlow()
+    private var streamLogHeartbeatJob: Job? = null
 
     var currentPreviewView: PreviewView? = null
 
@@ -148,12 +153,15 @@ class MainViewModel @Inject constructor(
                                 "stream_start",
                                 "Stream started for eventId: ${commandPayload.eventId}"
                             )
+                            launchStreamLogHeartbeat(commandPayload.eventId)
                         }
                     }
                     if(commandPayload.command == "stopStreaming") {
                         if (streamRepository.streamState.value == StreamState.Streaming){
                             mqttClientManager.publishLog("info","stream_stop", "Stream stopped manually or by command")
                             streamRepository.stopStream()
+                            streamLogHeartbeatJob?.cancel()
+
                         }
 
                     }
@@ -282,6 +290,9 @@ class MainViewModel @Inject constructor(
                         _uiState.value = UiState.Error(error.message ?: "Failed to start streaming")
                         Log.d("STREAMING", "Failed to start stream",error)
                     }
+                    .onSuccess {
+                        launchStreamLogHeartbeat(eventId)
+                    }
             } catch (e: Exception) {
                 _uiState.value = UiState.Error("Could not connect to streaming service")
                 Log.d("STREAMING", "Failed to start stream",e)
@@ -291,6 +302,7 @@ class MainViewModel @Inject constructor(
 
     fun stopStream() {
         viewModelScope.launch {
+            streamLogHeartbeatJob?.cancel()
             try {
                 streamRepository.stopStream()
                     .onFailure { error ->
@@ -305,6 +317,21 @@ class MainViewModel @Inject constructor(
     @SuppressLint("MissingPermission")
     fun reinitStreamer(newConfig: StreamConfiguration) {
         createStreamer(newConfig)
+    }
+
+    private fun launchStreamLogHeartbeat(eventId: String) {
+        streamLogHeartbeatJob?.cancel()
+        streamLogHeartbeatJob = viewModelScope.launch(Dispatchers.IO) {
+            while (isActive && streamRepository.streamState.value == StreamState.Streaming) {
+                mqttClientManager.publishLog(
+                    level = "info",
+                    tag = "stream_chunk_sent",
+                    message = "heartbeat",
+                    eventId = eventId,
+                )
+                delay(5000)
+            }
+        }
     }
 }
 
