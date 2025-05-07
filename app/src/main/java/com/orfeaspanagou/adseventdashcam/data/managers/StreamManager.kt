@@ -3,7 +3,7 @@ package com.orfeaspanagou.adseventdashcam.data.managers.stream
 
 import android.Manifest
 import android.content.Context
-import android.util.Log
+    import android.util.Log
 import androidx.annotation.RequiresPermission
 import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
 import com.orfeaspanagou.adseventdashcam.data.factory.StreamerFactory
@@ -88,14 +88,15 @@ class StreamManager @Inject constructor(
         try {
             // Decide whether to stream or record based on connectivity
             if (isConnected) {
+                val streamStartTs = System.currentTimeMillis()
                 val rtmpUrlWithParams = buildString {
                     append(currentRtmpUrl)
                     append("?deviceId="); append(deviceId)
                     append("&lat=");      append(currentLocation.latitude)
                     append("&lng=");      append(currentLocation.longitude)
                     append("&acc=");      append(currentLocation.accuracy)
-                    append("&ts=");       append(currentLocation.timestamp)
-                    append("&eventId=");   append(eventId)
+                    append("&ts=");       append(streamStartTs)
+                    append("&eventId=");  append(eventId)
                 }
 
                 streamer?.getLiveStreamer()?.connect(rtmpUrlWithParams)
