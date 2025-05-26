@@ -20,6 +20,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.orfeaspanagou.adseventdashcam.data.config.StreamConfiguration
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+
 
 @Composable
 fun SettingsScreen(
@@ -28,7 +31,11 @@ fun SettingsScreen(
 ) {
     var tempConfig by remember { mutableStateOf(currentConfig) }
 
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
         Text("Settings", style = MaterialTheme.typography.titleLarge)
 
         Spacer(Modifier.height(16.dp))

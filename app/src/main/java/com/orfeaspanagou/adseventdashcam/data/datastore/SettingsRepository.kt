@@ -14,9 +14,9 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
     val configFlow: Flow<StreamConfiguration> = dataStore.data.map { prefs ->
         StreamConfiguration(
             audio = prefs[ConfigKeys.AUDIO] ?: false,
-            rtmpEndpoint = prefs[ConfigKeys.RTMP_ENDPOINT] ?: "rtmp://192.168.1.77:1935/live/stream",
-            httpEndpoint = prefs[ConfigKeys.HTTP_ENDPOINT] ?: "http://192.168.1.77:8080/",
-            mqttBrokerUrl = prefs[ConfigKeys.MQTT_BROKER_URL] ?: "mqtt://192.168.1.77:1883",
+            rtmpEndpoint = prefs[ConfigKeys.RTMP_ENDPOINT] ?: "rtmp://195.251.127.196:1935/live/stream",
+            httpEndpoint = prefs[ConfigKeys.HTTP_ENDPOINT] ?: "http://195.251.127.196:8080/",
+            mqttBrokerUrl = prefs[ConfigKeys.MQTT_BROKER_URL] ?: "mqtt://195.251.127.196:1883",
             fileEndpoint = "path",
             bitrate = prefs[ConfigKeys.BITRATE] ?: 2000,
             resolutionWidth = prefs[ConfigKeys.RES_WIDTH] ?: 1280,
